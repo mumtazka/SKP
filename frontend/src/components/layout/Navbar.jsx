@@ -1,6 +1,7 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Bell, Menu, User as UserIcon } from 'lucide-react';
+import { Bell, Menu, User as UserIcon, Settings, LogOut } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -18,6 +19,7 @@ import {
 const UserDropdown = ({ user, logout }) => {
     const [open, setOpen] = React.useState(false);
     const ref = React.useRef(null);
+    const navigate = useNavigate();
 
     React.useEffect(() => {
         const handleClickOutside = (event) => {
@@ -28,6 +30,16 @@ const UserDropdown = ({ user, logout }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const handleProfileClick = () => {
+        setOpen(false);
+        navigate('/profile');
+    };
+
+    const handleLogout = () => {
+        setOpen(false);
+        logout();
+    };
 
     return (
         <div className="relative" ref={ref}>
@@ -47,24 +59,47 @@ const UserDropdown = ({ user, logout }) => {
             </button>
 
             {open && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-50 animate-in fade-in zoom-in duration-200">
-                    <div className="px-4 py-2 border-b border-gray-100 md:hidden">
-                        <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
-                        <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-lg py-2 z-50 animate-in fade-in zoom-in duration-200">
+                    {/* User Info Header */}
+                    <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                            <img
+                                src={user.photo}
+                                alt={user.fullName}
+                                className="h-10 w-10 rounded-full border border-gray-200"
+                            />
+                            <div className="overflow-hidden">
+                                <p className="text-sm font-medium text-gray-900 truncate">{user.fullName}</p>
+                                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                            </div>
+                        </div>
                     </div>
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary">
-                        Profile
-                    </button>
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary">
-                        Settings
-                    </button>
-                    <div className="border-t border-gray-100 my-1"></div>
-                    <button
-                        onClick={logout}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                    >
-                        Logout
-                    </button>
+
+                    {/* Menu Items */}
+                    <div className="py-1">
+                        <button
+                            onClick={handleProfileClick}
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary flex items-center gap-3 transition-colors"
+                        >
+                            <UserIcon size={16} className="text-gray-400" />
+                            Profile
+                        </button>
+                        <button className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary flex items-center gap-3 transition-colors">
+                            <Settings size={16} className="text-gray-400" />
+                            Settings
+                        </button>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="border-t border-gray-100 pt-1">
+                        <button
+                            onClick={handleLogout}
+                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+                        >
+                            <LogOut size={16} />
+                            Logout
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

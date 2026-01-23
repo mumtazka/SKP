@@ -1,9 +1,10 @@
-import { INITIAL_USERS, INITIAL_DEPARTMENTS, INITIAL_SKPS } from '@/utils/mockData';
+import { INITIAL_USERS, INITIAL_DEPARTMENTS, INITIAL_SKPS, INITIAL_STUDY_PROGRAMS } from '@/utils/mockData';
 
 const COLLECTION_KEYS = {
     USERS: 'skp_users',
     SKPS: 'skp_skps',
     DEPARTMENTS: 'skp_departments',
+    STUDY_PROGRAMS: 'skp_study_programs',
     SESSION: 'skp_session'
 };
 
@@ -18,6 +19,9 @@ const initializeData = () => {
     if (!localStorage.getItem(COLLECTION_KEYS.DEPARTMENTS)) {
         localStorage.setItem(COLLECTION_KEYS.DEPARTMENTS, JSON.stringify(INITIAL_DEPARTMENTS));
     }
+    if (!localStorage.getItem(COLLECTION_KEYS.STUDY_PROGRAMS)) {
+        localStorage.setItem(COLLECTION_KEYS.STUDY_PROGRAMS, JSON.stringify(INITIAL_STUDY_PROGRAMS));
+    }
 };
 
 initializeData();
@@ -29,6 +33,20 @@ const getCollection = (key) => {
 
 const setCollection = (key, data) => {
     localStorage.setItem(key, JSON.stringify(data));
+};
+
+// Helper to get department name by ID
+const getDepartmentName = (departmentId) => {
+    const departments = getCollection(COLLECTION_KEYS.DEPARTMENTS);
+    const dept = departments.find(d => d.id === departmentId);
+    return dept ? dept.name : null;
+};
+
+// Helper to get study program name by ID
+const getStudyProgramName = (studyProgramId) => {
+    const programs = getCollection(COLLECTION_KEYS.STUDY_PROGRAMS);
+    const prog = programs.find(p => p.id === studyProgramId);
+    return prog ? prog.name : null;
 };
 
 export const api = {
@@ -43,6 +61,11 @@ export const api = {
                 const token = btoa(JSON.stringify({ id: user.id, role: user.role, exp: Date.now() + 86400000 }));
                 const sessionUser = { ...user };
                 delete sessionUser.password;
+
+                // Add resolved department and study program names
+                sessionUser.departmentName = getDepartmentName(user.departmentId);
+                sessionUser.studyProgramName = getStudyProgramName(user.studyProgramId);
+
                 localStorage.setItem(COLLECTION_KEYS.SESSION, JSON.stringify({ token, user: sessionUser }));
                 return { token, user: sessionUser };
             }
@@ -54,6 +77,39 @@ export const api = {
         getSession: () => {
             const session = localStorage.getItem(COLLECTION_KEYS.SESSION);
             return session ? JSON.parse(session) : null;
+        },
+        updateProfile: async (userId, updates) => {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const users = getCollection(COLLECTION_KEYS.USERS);
+            const index = users.findIndex(u => u.id === userId);
+            if (index === -1) throw new Error("User not found");
+
+            // Only allow updating certain fields
+            const allowedUpdates = ['email', 'phoneNumber', 'address', 'photo'];
+            const filteredUpdates = {};
+            for (const key of allowedUpdates) {
+                if (updates[key] !== undefined) {
+                    filteredUpdates[key] = updates[key];
+                }
+            }
+            filteredUpdates.updatedAt = new Date().toISOString();
+
+            users[index] = { ...users[index], ...filteredUpdates };
+            setCollection(COLLECTION_KEYS.USERS, users);
+
+            // Update session
+            const session = JSON.parse(localStorage.getItem(COLLECTION_KEYS.SESSION));
+            if (session && session.user.id === userId) {
+                const updatedUser = { ...users[index] };
+                delete updatedUser.password;
+                updatedUser.departmentName = getDepartmentName(updatedUser.departmentId);
+                updatedUser.studyProgramName = getStudyProgramName(updatedUser.studyProgramId);
+                session.user = updatedUser;
+                localStorage.setItem(COLLECTION_KEYS.SESSION, JSON.stringify(session));
+            }
+
+            const { password, ...rest } = users[index];
+            return rest;
         }
     },
 
@@ -62,23 +118,54 @@ export const api = {
             await new Promise(resolve => setTimeout(resolve, 500));
             return getCollection(COLLECTION_KEYS.USERS).map(u => {
                 const { password, ...rest } = u;
+                rest.departmentName = getDepartmentName(rest.departmentId);
+                rest.studyProgramName = getStudyProgramName(rest.studyProgramId);
                 return rest;
             });
+        },
+        getById: async (id) => {
+            await new Promise(resolve => setTimeout(resolve, 300));
+            const users = getCollection(COLLECTION_KEYS.USERS);
+            const user = users.find(u => u.id === id);
+            if (!user) throw new Error("User not found");
+            const { password, ...rest } = user;
+            rest.departmentName = getDepartmentName(rest.departmentId);
+            rest.studyProgramName = getStudyProgramName(rest.studyProgramId);
+            return rest;
         },
         create: async (userData) => {
             await new Promise(resolve => setTimeout(resolve, 500));
             const users = getCollection(COLLECTION_KEYS.USERS);
             if (users.find(u => u.username === userData.username)) throw new Error("Username already exists");
+            if (users.find(u => u.email === userData.email)) throw new Error("Email already exists");
 
             const newUser = {
-                ...userData,
-                id: 'u' + Date.now(),
+                id: 'u-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                username: userData.username,
+                password: userData.password,
+                email: userData.email,
+                fullName: userData.fullName,
+                identityNumber: userData.identityNumber || null,
+                role: userData.role,
+                departmentId: userData.departmentId || null,
+                studyProgramId: userData.studyProgramId || null,
+                phoneNumber: userData.phoneNumber || null,
+                address: userData.address || null,
+                attachments: userData.attachments || null,
+                isHomebase: userData.isHomebase || false,
+                jabatan: userData.jabatan || null,
+                status: userData.status !== undefined ? userData.status : true,
                 createdAt: new Date().toISOString(),
-                photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random&color=fff`
+                updatedAt: new Date().toISOString(),
+                photo: userData.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random&color=fff`
             };
             users.push(newUser);
             setCollection(COLLECTION_KEYS.USERS, users);
-            return newUser;
+
+            const { password, ...rest } = newUser;
+            rest.departmentName = getDepartmentName(rest.departmentId);
+            rest.studyProgramName = getStudyProgramName(rest.studyProgramId);
+            return rest;
         },
         update: async (id, updates) => {
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -86,9 +173,12 @@ export const api = {
             const index = users.findIndex(u => u.id === id);
             if (index === -1) throw new Error("User not found");
 
-            users[index] = { ...users[index], ...updates };
+            users[index] = { ...users[index], ...updates, updatedAt: new Date().toISOString() };
             setCollection(COLLECTION_KEYS.USERS, users);
+
             const { password, ...rest } = users[index];
+            rest.departmentName = getDepartmentName(rest.departmentId);
+            rest.studyProgramName = getStudyProgramName(rest.studyProgramId);
             return rest;
         },
         delete: async (id) => {
@@ -140,6 +230,24 @@ export const api = {
     departments: {
         getAll: async () => {
             return getCollection(COLLECTION_KEYS.DEPARTMENTS);
+        },
+        getById: async (id) => {
+            const departments = getCollection(COLLECTION_KEYS.DEPARTMENTS);
+            return departments.find(d => d.id === id);
+        }
+    },
+
+    studyPrograms: {
+        getAll: async () => {
+            return getCollection(COLLECTION_KEYS.STUDY_PROGRAMS);
+        },
+        getByDepartment: async (departmentId) => {
+            const programs = getCollection(COLLECTION_KEYS.STUDY_PROGRAMS);
+            return programs.filter(p => p.departmentId === departmentId);
+        },
+        getById: async (id) => {
+            const programs = getCollection(COLLECTION_KEYS.STUDY_PROGRAMS);
+            return programs.find(p => p.id === id);
         }
     }
 };

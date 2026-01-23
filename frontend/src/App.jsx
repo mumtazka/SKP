@@ -9,6 +9,9 @@ import Login from '@/pages/Login';
 // Layout
 import Layout from '@/components/layout/Layout';
 
+// Common Pages
+import Profile from '@/pages/Profile';
+
 // Dosen Pages
 import DosenDashboard from '@/pages/dosen/DosenDashboard';
 import SubmitSKP from '@/pages/dosen/SubmitSKP';
@@ -51,6 +54,9 @@ function App() {
                     <Route path="/" element={<Layout />}>
                         <Route index element={<DashboardRedirect />} />
                         <Route path="dashboard" element={<DashboardRedirect />} />
+
+                        {/* Common Routes */}
+                        <Route path="profile" element={<Profile />} />
 
                         {/* DOSEN */}
                         <Route path="dosen">

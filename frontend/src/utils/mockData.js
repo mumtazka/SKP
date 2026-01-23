@@ -1,120 +1,92 @@
 // Initial mock data
+
+// Departments with UUID-style IDs
+export const INITIAL_DEPARTMENTS = [
+  { id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d', name: "Fakultas Ilmu Komputer", code: "FILKOM", head: "Dr. Ratna" },
+  { id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e', name: "HRD", code: "HR", head: "Budi Santoso" },
+  { id: 'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f', name: "IT", code: "IT", head: "Super Admin" },
+];
+
+// Study Programs
+export const INITIAL_STUDY_PROGRAMS = [
+  { id: 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a', name: "Teknik Informatika", code: "TI", departmentId: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' },
+  { id: 'e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b', name: "Sistem Informasi", code: "SI", departmentId: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' },
+];
+
+// Users with complete schema matching the database structure
+// Only 3 users: 1 Admin, 1 Dosen, 1 Kepegawaian
 export const INITIAL_USERS = [
-  // Dosen
+  // 1. Super Admin
   {
-    id: 'u1',
-    username: "dosen1",
-    password: "dosen123",
-    fullName: "Dr. Ahmad Suryadi",
-    role: "dosen",
-    department: "Teknik Informatika",
-    email: "ahmad@univ.ac.id",
-    status: true,
-    lastLogin: "2024-03-10T08:30:00Z",
-    photo: "https://ui-avatars.com/api/?name=Ahmad+Suryadi&background=7C3AED&color=fff"
-  },
-  {
-    id: 'u2',
-    username: "dosen2",
-    password: "dosen123",
-    fullName: "Dr. Siti Aminah",
-    role: "dosen",
-    department: "Sistem Informasi",
-    email: "siti@univ.ac.id",
-    status: true,
-    lastLogin: "2024-03-09T14:20:00Z",
-    photo: "https://ui-avatars.com/api/?name=Siti+Aminah&background=7C3AED&color=fff"
-  },
-  {
-    id: 'u3',
-    username: "dosen3",
-    password: "dosen123",
-    fullName: "Prof. Budi Hartono",
-    role: "dosen",
-    department: "Teknik Elektro",
-    email: "budi@univ.ac.id",
-    status: true,
-    lastLogin: "2024-03-08T09:15:00Z",
-    photo: "https://ui-avatars.com/api/?name=Budi+Hartono&background=7C3AED&color=fff"
-  },
-
-  // Kepegawaian (HR)
-  {
-    id: 'u4',
-    username: "hr1",
-    password: "hr123",
-    fullName: "Budi Santoso",
-    role: "kepegawaian",
-    department: "HRD",
-    email: "budi.hr@univ.ac.id",
-    status: true,
-    lastLogin: "2024-03-11T07:45:00Z",
-    photo: "https://ui-avatars.com/api/?name=Budi+Santoso&background=FBBF24&color=fff"
-  },
-  {
-    id: 'u5',
-    username: "hr2",
-    password: "hr123",
-    fullName: "Rina Kartika",
-    role: "kepegawaian",
-    department: "HRD",
-    email: "rina.hr@univ.ac.id",
-    status: true,
-    lastLogin: "2024-03-10T16:00:00Z",
-    photo: "https://ui-avatars.com/api/?name=Rina+Kartika&background=FBBF24&color=fff"
-  },
-
-  // Admin
-  {
-    id: 'u6',
+    id: 'f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c',
     username: "admin",
     password: "admin123",
-    fullName: "Super Admin",
-    role: "admin",
-    department: "IT",
     email: "admin@univ.ac.id",
+    fullName: "Super Admin",
+    identityNumber: "ADM-001",
+    role: "admin",
+    departmentId: "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    studyProgramId: null,
+    phoneNumber: "+62 821-0000-0001",
+    address: "Gedung Rektorat Lt. 3, Universitas Indonesia",
+    attachments: null,
+    isHomebase: false,
+    jabatan: "System Administrator",
     status: true,
-    lastLogin: "2024-03-11T10:00:00Z",
+    createdAt: "2023-01-01T00:00:00Z",
+    updatedAt: "2024-03-11T10:00:00Z",
     photo: "https://ui-avatars.com/api/?name=Super+Admin&background=10B981&color=fff"
+  },
+
+  // 2. Dosen (Lecturer)
+  {
+    id: 'a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d',
+    username: "dosen",
+    password: "dosen123",
+    email: "ahmad@univ.ac.id",
+    fullName: "Dr. Ahmad Suryadi, M.Kom",
+    identityNumber: "NIP. 198501152010011001",
+    role: "dosen",
+    departmentId: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    studyProgramId: "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
+    phoneNumber: "+62 812-3456-7890",
+    address: "Jl. Mawar No. 15, Malang, Jawa Timur 65145",
+    attachments: null,
+    isHomebase: true,
+    jabatan: "Lektor",
+    status: true,
+    createdAt: "2024-01-15T08:00:00Z",
+    updatedAt: "2024-03-10T08:30:00Z",
+    photo: "https://ui-avatars.com/api/?name=Ahmad+Suryadi&background=7C3AED&color=fff"
+  },
+
+  // 3. Kepegawaian (Staffing/HR)
+  {
+    id: 'b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e',
+    username: "staff",
+    password: "staff123",
+    email: "budi.hr@univ.ac.id",
+    fullName: "Budi Santoso, S.E., M.M.",
+    identityNumber: "NIP. 199001011020011001",
+    role: "kepegawaian",
+    departmentId: "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+    studyProgramId: null,
+    phoneNumber: "+62 856-7890-1234",
+    address: "Jl. Dahlia No. 5, Bandung, Jawa Barat 40115",
+    attachments: null,
+    isHomebase: false,
+    jabatan: "Kepala Bagian SDM",
+    status: true,
+    createdAt: "2023-01-10T08:00:00Z",
+    updatedAt: "2024-03-11T07:45:00Z",
+    photo: "https://ui-avatars.com/api/?name=Budi+Santoso&background=FBBF24&color=fff"
   }
 ];
 
-export const INITIAL_DEPARTMENTS = [
-  { id: 'd1', name: "Teknik Informatika", code: "TI", head: "Dr. Zulkifli" },
-  { id: 'd2', name: "Sistem Informasi", code: "SI", head: "Dr. Ratna" },
-  { id: 'd3', name: "Teknik Elektro", code: "TE", head: "Prof. Bambang" },
-  { id: 'd4', name: "Teknik Sipil", code: "TS", head: "Ir. Wijaya" },
-  { id: 'd5', name: "Manajemen", code: "MN", head: "Dr. Susanti" },
-  { id: 'd6', name: "Akuntansi", code: "AK", head: "Dr. Hendra" },
-  { id: 'd7', name: "HRD", code: "HR", head: "Budi Santoso" },
-  { id: 'd8', name: "IT", code: "IT", head: "Super Admin" },
-];
-
 export const INITIAL_SKPS = [
-  // 2023 SKPs (Completed)
   {
-    id: 's1',
-    userId: 'u1',
-    year: '2023',
-    activity: 'Penelitian IoT Smart Home',
-    category: 'Penelitian',
-    target: 'Jurnal Internasional Q2',
-    objectives: 'Mempublikasikan hasil penelitian',
-    output: 'Published Paper',
-    startDate: '2023-01-01',
-    endDate: '2023-12-31',
-    status: 'Completed',
-    progress: 100,
-    score: 85,
-    evaluatorId: 'u4',
-    createdAt: '2023-01-10T09:00:00Z',
-    approvedAt: '2023-01-15T14:00:00Z',
-    evaluatedAt: '2023-12-20T10:00:00Z'
-  },
-  // 2024 SKPs (In Progress/Submitted)
-  {
-    id: 's2',
-    userId: 'u1',
+    id: 'c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f',
+    userId: 'a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d',
     year: '2024',
     activity: 'Pengajaran Mata Kuliah AI',
     category: 'Pengajaran',
@@ -127,21 +99,6 @@ export const INITIAL_SKPS = [
     progress: 40,
     createdAt: '2024-01-15T08:00:00Z',
     approvedAt: '2024-01-20T11:00:00Z'
-  },
-  {
-    id: 's3',
-    userId: 'u2',
-    year: '2024',
-    activity: 'Pengabdian Masyarakat UMKM',
-    category: 'Pengabdian',
-    target: 'Pendampingan 5 UMKM',
-    objectives: 'Digitalisasi UMKM lokal',
-    output: 'Laporan Kegiatan',
-    startDate: '2024-03-01',
-    endDate: '2024-08-31',
-    status: 'Pending',
-    progress: 0,
-    createdAt: '2024-02-28T10:00:00Z'
   }
 ];
 
@@ -151,5 +108,5 @@ export const STATUS_COLORS = {
   'In Progress': 'info',
   'Completed': 'success',
   'Rejected': 'destructive',
-  'Under Review': 'warning' // Or orange if custom defined
+  'Under Review': 'warning'
 };

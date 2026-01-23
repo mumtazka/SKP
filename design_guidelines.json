@@ -1,0 +1,136 @@
+{
+  "identity": {
+    "name": "SKP Pro - The Purple Prism",
+    "persona": "E1: Anti-AI Designer",
+    "tone": "Professional, Kinetic, Clarity-First",
+    "description": "A high-performance university performance management system that breaks the boring 'admin panel' stereotype with deep violet accents, glassmorphism, and fluid interactions."
+  },
+  "typography": {
+    "primary_font": "Plus Jakarta Sans",
+    "secondary_font": "Inter",
+    "import_url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
+    "usage": {
+      "headings": "font-['Plus_Jakarta_Sans'] tracking-tight font-bold",
+      "body": "font-['Inter'] tracking-normal",
+      "ui_elements": "font-['Inter'] font-medium tracking-wide"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#7C3AED",
+        "foreground": "#FFFFFF",
+        "50": "#F5F3FF",
+        "100": "#EDE9FE",
+        "200": "#DDD6FE",
+        "300": "#C4B5FD",
+        "400": "#A78BFA",
+        "500": "#8B5CF6",
+        "600": "#7C3AED",
+        "700": "#6D28D9",
+        "800": "#5B21B6",
+        "900": "#4C1D95"
+      },
+      "secondary": {
+        "DEFAULT": "#10B981",
+        "foreground": "#FFFFFF"
+      },
+      "background": "#F8F7FA",
+      "surface": "#FFFFFF",
+      "text": {
+        "primary": "#1E1B4B",
+        "secondary": "#64748B",
+        "muted": "#94A3B8"
+      }
+    },
+    "semantic": {
+      "success": "#10B981",
+      "warning": "#FBBF24",
+      "error": "#EF4444",
+      "info": "#3B82F6"
+    }
+  },
+  "layout": {
+    "spacing_system": "Generous. Use p-6 or p-8 for cards. Gap-6 for grids.",
+    "radius": "rounded-xl",
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "grid_modes": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-12 gap-6",
+      "form": "grid grid-cols-1 md:grid-cols-2 gap-8"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "bg-white/80 backdrop-blur-xl border border-white/20 shadow-sm",
+    "shadows": {
+      "card": "shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(124,58,237,0.12)] transition-all duration-300",
+      "button": "shadow-[0_4px_14px_0_rgba(124,58,237,0.39)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.23)]"
+    },
+    "gradients": {
+      "login_sidebar": "bg-gradient-to-br from-violet-600 via-purple-700 to-indigo-800",
+      "active_item": "bg-gradient-to-r from-violet-50 to-transparent border-l-4 border-violet-600"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-white rounded-full px-6 py-2.5 font-semibold hover:bg-primary/90 transition-all active:scale-95",
+      "secondary": "bg-white text-slate-700 border border-slate-200 rounded-full px-6 py-2.5 font-medium hover:bg-slate-50 hover:border-slate-300 transition-all",
+      "ghost": "text-slate-600 hover:bg-violet-50 hover:text-violet-700 rounded-lg px-4 py-2 transition-colors"
+    },
+    "cards": {
+      "base": "bg-white rounded-xl border border-slate-100 p-6",
+      "interactive": "bg-white rounded-xl border border-slate-100 p-6 cursor-pointer hover:border-violet-200 hover:ring-2 hover:ring-violet-50 transition-all"
+    },
+    "inputs": {
+      "base": "flex h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "tables": {
+      "wrapper": "w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
+      "header": "bg-slate-50/50 border-b border-slate-100",
+      "row": "hover:bg-slate-50/80 transition-colors border-b border-slate-50 last:border-0"
+    }
+  },
+  "image_urls": {
+    "login_hero": {
+      "url": "https://images.unsplash.com/photo-1674133623270-469ea4464ba9?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Abstract 3D Isometric Shape",
+      "usage": "Right side of split login screen, overlaid with glass card"
+    },
+    "login_bg_texture": {
+      "url": "https://images.pexels.com/photos/9436715/pexels-photo-9436715.jpeg",
+      "alt": "Gradient Texture",
+      "usage": "Background for the login illustration container"
+    },
+    "avatars": [
+      "https://images.pexels.com/photos/936034/pexels-photo-936034.jpeg",
+      "https://images.pexels.com/photos/30004360/pexels-photo-30004360.jpeg",
+      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80"
+    ]
+  },
+  "instructions_to_main_agent": {
+    "setup": [
+      "Install fonts in index.css using the @import url provided.",
+      "Update tailwind.config.js with the custom colors and font families.",
+      "Ensure 'lucide-react' is used for all icons.",
+      "Ensure 'recharts' is used for all charts.",
+      "Ensure 'sonner' is used for all notifications."
+    ],
+    "layout_rules": [
+      "LOGIN PAGE: Split 50/50. Left side is clean white with the form. Right side is the 'login_bg_texture' with the 'login_hero' image floating in the center.",
+      "DASHBOARD: Use a Sidebar layout. Sidebar must be sticky and use the 'glassmorphism' style if possible, or clean white with a border-r.",
+      "HEADER: Minimalist. Just the page title and user profile dropdown. No search bar unless necessary.",
+      "CONTENT: Use the 'Bento Grid' strategy. Don't just stack cards. Make some span 2 columns."
+    ],
+    "anti_ai_rules": [
+      "DO NOT use standard gray borders (gray-200). Use slate-100 or violet-100 for a cleaner look.",
+      "DO NOT center text in cards unless it's a specific stat. Left align is better for readability.",
+      "DO NOT use pure black (#000000). Use the semantic text colors defined above.",
+      "Add 'active:scale-95' to all buttons to give them a tactile feel."
+    ]
+  },
+  "universal_guidelines": {
+    "testing": "All interactive elements MUST have a data-testid attribute (kebab-case).",
+    "accessibility": "Ensure all colors meet WCAG AA contrast ratios. Use focus-visible rings for keyboard navigation.",
+    "motion": "Use 'framer-motion' or Tailwind 'transition-all' for smooth hover states. No instant color changes."
+  }
+}

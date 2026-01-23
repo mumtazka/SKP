@@ -36,6 +36,11 @@ const UserDropdown = ({ user, logout }) => {
         navigate('/profile');
     };
 
+    const handleSettingsClick = () => {
+        setOpen(false);
+        navigate('/settings');
+    };
+
     const handleLogout = () => {
         setOpen(false);
         logout();
@@ -84,7 +89,10 @@ const UserDropdown = ({ user, logout }) => {
                             <UserIcon size={16} className="text-gray-400" />
                             Profile
                         </button>
-                        <button className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary flex items-center gap-3 transition-colors">
+                        <button
+                            onClick={handleSettingsClick}
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary flex items-center gap-3 transition-colors"
+                        >
                             <Settings size={16} className="text-gray-400" />
                             Settings
                         </button>
@@ -122,6 +130,9 @@ const Navbar = ({ toggleSidebar, isMobile }) => {
                     <span className="font-bold text-lg tracking-tight text-gray-900">SKP System</span>
                 )}
             </div>
+
+            {/* Application Action Area (Portal Target for Toolbars etc) */}
+            <div id="navbar-action-area" className="flex-1 flex justify-center px-4 min-w-0"></div>
 
             <div className="flex items-center gap-2 sm:gap-4">
                 <button className="p-2 rounded-full hover:bg-gray-100 text-gray-500 relative">

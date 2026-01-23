@@ -10,7 +10,9 @@ import Login from '@/pages/Login';
 import Layout from '@/components/layout/Layout';
 
 // Common Pages
+// Common Pages
 import Profile from '@/pages/Profile';
+import Settings from '@/pages/Settings';
 
 // Dosen Pages
 import DosenDashboard from '@/pages/dosen/DosenDashboard';
@@ -57,6 +59,7 @@ function App() {
 
                         {/* Common Routes */}
                         <Route path="profile" element={<Profile />} />
+                        <Route path="settings" element={<Settings />} />
 
                         {/* DOSEN */}
                         <Route path="dosen">

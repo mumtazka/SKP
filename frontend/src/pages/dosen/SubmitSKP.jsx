@@ -1,239 +1,298 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/common/Button';
-import { Input } from '@/components/common/Input';
-import ProgressBar from '@/components/common/ProgressBar';
-import FileUpload from '@/components/common/FileUpload';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Save, Check } from 'lucide-react';
+import { Send, Save, AlertTriangle, Info } from 'lucide-react';
+import SKPHeader from './components/SKPHeader';
+import SKPSection from './components/SKPSection';
+import Toolbar from './components/Toolbar';
+import { useSkpDraft } from '@/hooks/useSkpDraft';
+import { Button } from '@/components/common/Button';
 
-const steps = [
-    { id: 1, title: 'Basic Information' },
-    { id: 2, title: 'Details' },
-    { id: 3, title: 'Timeline & Docs' },
-    { id: 4, title: 'Review' }
-];
+// UI Helper for the purple headers
+const SectionHeader = ({ title }) => (
+    <div className="bg-primary text-white font-bold py-2.5 px-4 rounded-t-md shadow-sm text-sm tracking-wide uppercase mt-8 mb-0">
+        {title}
+    </div>
+);
+
+const INITIAL_FORM_STATE = {
+    utama: [
+        { id: 1, columns: ['<p>Tuliskan rencana kinerja utama anda disini...</p>'] }
+    ],
+    tambahan: [
+        { id: 1, columns: [''] }
+    ],
+    dukungan: [
+        { id: 1, columns: [''] }
+    ],
+    skema: [
+        { id: 1, columns: [''] }
+    ],
+    konsekuensi: [
+        { id: 1, columns: [''] }
+    ]
+};
+
+// Simple Confirmation Modal Component
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, isSubmitting }) => {
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 animate-in zoom-in-95 duration-200">
+                <div className="mb-4">
+                    <h3 className="text-lg font-bold text-gray-900">Konfirmasi Pengajuan</h3>
+                    <p className="text-gray-500 mt-2 text-sm">
+                        Apakah anda yakin ingin mengajukan SKP ini? <br />
+                        Setelah diajukan, data akan dikirim ke pejabat penilai untuk divalidasi.
+                    </p>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                    <button
+                        onClick={onClose}
+                        disabled={isSubmitting}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={isSubmitting}
+                        className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                        {isSubmitting ? 'Mengirim...' : 'Ya, Ajukan SKP'}
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
 
 const SubmitSKP = () => {
     const navigate = useNavigate();
-    const [currentStep, setCurrentStep] = useState(1);
-    const [isLoading, setIsLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        year: new Date().getFullYear().toString(),
-        activity: '',
-        category: '',
-        target: '',
-        objectives: '',
-        output: '',
-        startDate: '',
-        endDate: '',
-        files: []
-    });
+    const { user } = useAuth();
+    const [evaluator, setEvaluator] = useState(null);
+    const [activeEditor, setActiveEditor] = useState(null);
+    const [portalTarget, setPortalTarget] = useState(null);
+    const [feedback, setFeedback] = useState(null);
+    const [existingSkpId, setExistingSkpId] = useState(null);
 
-    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, steps.length));
-    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+    // UI State
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-    };
+    useEffect(() => {
+        setPortalTarget(document.getElementById('navbar-action-area'));
+    }, []);
 
-    const handleSubmit = async () => {
-        setIsLoading(true);
-        try {
-            await api.skps.create({
-                ...formData,
-                files: formData.files.map(f => f.name) // Just storing names for mock
+    // Auto-save hook
+    const {
+        data,
+        updateSection,
+        isSaving,
+        lastSaved,
+        clearDraft,
+        setData // Need this to load existing data
+    } = useSkpDraft(INITIAL_FORM_STATE);
+
+    useEffect(() => {
+        const loadExistingSkp = async () => {
+            if (!user) return;
+            try {
+                const skps = await api.skps.getByUser(user.id);
+                // Assuming we want the latest one or logic for 'current period'
+                const latest = skps.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+
+                if (latest) {
+                    if (latest.status === 'Rejected') {
+                        console.log("Found rejected SKP", latest);
+                        setExistingSkpId(latest.id);
+                        setFeedback(latest.feedback);
+                        if (latest.details) {
+                            setData(latest.details);
+                        }
+                        toast.warning("SKP Anda dikembalikan untuk revisi. Silakan cek catatan.");
+                    } else if (latest.status === 'Pending') {
+                        // View mode only? Or let them edit? For now let's warn.
+                        toast.info("Anda memiliki SKP yang sedang dalam proses review.");
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load existing SKP", e);
+            }
+        };
+        loadExistingSkp();
+    }, [user]); // Run once when user loads
+
+    useEffect(() => {
+        if (user) {
+            setEvaluator({
+                fullName: 'Prof. Dr. ALI SATIA GRAHA, S.Pd., M.Kes.',
+                identityNumber: '197504162003121002',
+                pangkat: 'Pembina Utama Madya, IV/d',
+                jabatan: 'Dekan',
+                unit: 'Universitas Negeri Yogyakarta'
             });
-            toast.success("SKP submitted successfully");
-            navigate('/dosen/progress');
-        } catch (err) {
-            toast.error("Failed to submit SKP");
+        }
+    }, [user]);
+
+    const handleConfirmSubmit = async () => {
+        if (!user) return;
+        setIsSubmitting(true);
+        try {
+            const payload = {
+                userId: user.id,
+                userName: user.fullName,
+                details: data,
+                evaluatorId: evaluator?.id || 'mock-evaluator',
+                period: new Date().getFullYear().toString(),
+                status: 'Pending' // Reset to Pending on re-submit
+            };
+
+            if (existingSkpId) {
+                // Update existing
+                await api.skps.update(existingSkpId, payload);
+            } else {
+                // Create new
+                await api.skps.create(payload);
+            }
+
+            clearDraft();
+            setShowConfirm(false);
+            toast.success("SKP berhasil diajukan! Menunggu verifikasi.");
+            navigate('/dashboard');
+        } catch (error) {
+            console.error(error);
+            toast.error(error.message || "Gagal mengajukan SKP");
         } finally {
-            setIsLoading(false);
+            setIsSubmitting(false);
         }
     };
 
-    return (
-        <div className="max-w-3xl mx-auto space-y-8">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Ajukan SKP Baru</h1>
-                <p className="text-gray-500">Form pengajuan sasaran kinerja pegawai</p>
-            </div>
+    if (!user) return null;
 
-            {/* Progress */}
-            <div className="space-y-2">
-                <ProgressBar value={((currentStep - 1) / (steps.length - 1)) * 100} />
-                <div className="flex justify-between text-sm font-medium text-gray-500">
-                    {steps.map(step => (
-                        <span key={step.id} className={currentStep >= step.id ? "text-primary" : ""}>
-                            {step.title}
+    return (
+        <div className="max-w-5xl mx-auto pb-24 relative">
+            <ConfirmationModal
+                isOpen={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={handleConfirmSubmit}
+                isSubmitting={isSubmitting}
+            />
+
+            {/* PORTAL TOOLBAR */}
+            {portalTarget && createPortal(
+                <div className="w-full flex justify-center animate-in fade-in zoom-in duration-300">
+                    <div className="max-w-2xl w-full">
+                        <Toolbar editor={activeEditor} />
+                    </div>
+                </div>,
+                portalTarget
+            )}
+
+            {/* Page Title & Status */}
+            <div className="mb-6 flex justify-between items-end">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Perencanaan Kinerja</h1>
+                    <p className="text-gray-500">Isi rencana hasil kerja dan lampiran kinerja pegawai</p>
+                </div>
+
+                <div className="text-xs text-gray-400 font-medium flex items-center gap-2">
+                    {isSaving ? (
+                        <span className="animate-pulse text-primary">Saving draft...</span>
+                    ) : lastSaved ? (
+                        <span className="flex items-center gap-1 text-primary">
+                            <Save size={12} />
+                            Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                    ))}
+                    ) : (
+                        <span>Draft will auto-save</span>
+                    )}
                 </div>
             </div>
 
-            {/* Form Steps */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 sm:p-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-
-                {currentStep === 1 && (
-                    <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-900">Step 1: Basic Information</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tahun SKP</label>
-                                <select
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                    value={formData.year}
-                                    onChange={(e) => handleChange('year', e.target.value)}
-                                >
-                                    <option value="2023">2023</option>
-                                    <option value="2024">2024</option>
-                                    <option value="2025">2025</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kegiatan</label>
-                                <Input
-                                    placeholder="Contoh: Penelitian..."
-                                    value={formData.activity}
-                                    onChange={(e) => handleChange('activity', e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                                <select
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                    value={formData.category}
-                                    onChange={(e) => handleChange('category', e.target.value)}
-                                >
-                                    <option value="">Pilih Kategori</option>
-                                    <option value="Pendidikan">Pendidikan</option>
-                                    <option value="Penelitian">Penelitian</option>
-                                    <option value="Pengabdian">Pengabdian</option>
-                                    <option value="Penunjang">Penunjang</option>
-                                </select>
-                            </div>
+            {/* REJECTION NOTICE */}
+            {feedback && feedback.global && (
+                <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
+                    <div className="bg-red-100 p-2 rounded-full h-fit shrink-0">
+                        <AlertTriangle className="text-red-600" size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-red-800 text-lg mb-2">Perlu Revisi</h3>
+                        <p className="text-red-700 leading-relaxed">
+                            {feedback.global}
+                        </p>
+                        <div className="mt-4 flex items-center gap-2 text-sm text-red-600 font-medium bg-red-100/50 w-fit px-3 py-1.5 rounded-lg">
+                            <Info size={14} />
+                            Silakan perbaiki poin-poin yang diminta di bawah ini.
                         </div>
                     </div>
-                )}
+                </div>
+            )}
 
-                {currentStep === 2 && (
-                    <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-900">Step 2: Activity Details</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Target Kuantitas/Kualitas</label>
-                                <textarea
-                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                    placeholder="Deskripsi target..."
-                                    value={formData.target}
-                                    onChange={(e) => handleChange('target', e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Sasaran / Objectives</label>
-                                <textarea
-                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                    placeholder="Sasaran kegiatan..."
-                                    value={formData.objectives}
-                                    onChange={(e) => handleChange('objectives', e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Output Expected</label>
-                                <Input
-                                    placeholder="Contoh: Laporan, Jurnal..."
-                                    value={formData.output}
-                                    onChange={(e) => handleChange('output', e.target.value)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
+            {/* Top Info Card */}
+            <SKPHeader employee={user} evaluator={evaluator} />
 
-                {currentStep === 3 && (
-                    <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-900">Step 3: Timeline & Documents</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                                <Input
-                                    type="date"
-                                    value={formData.startDate}
-                                    onChange={(e) => handleChange('startDate', e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                                <Input
-                                    type="date"
-                                    value={formData.endDate}
-                                    onChange={(e) => handleChange('endDate', e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Supporting Documents</label>
-                            <FileUpload onFilesSelected={(files) => handleChange('files', files)} />
-                        </div>
-                    </div>
-                )}
+            {/* SECTION 1: HASIL KERJA */}
+            <SectionHeader title="Hasil Kerja" />
 
-                {currentStep === 4 && (
-                    <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-900">Step 4: Review & Submit</h3>
-                        <div className="bg-gray-50 rounded-lg p-6 space-y-4 text-sm">
-                            <div className="grid grid-cols-3 gap-2">
-                                <span className="text-gray-500">Year:</span>
-                                <span className="col-span-2 font-medium">{formData.year}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <span className="text-gray-500">Activity:</span>
-                                <span className="col-span-2 font-medium">{formData.activity}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <span className="text-gray-500">Category:</span>
-                                <span className="col-span-2 font-medium">{formData.category}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <span className="text-gray-500">Timeline:</span>
-                                <span className="col-span-2 font-medium">{formData.startDate} to {formData.endDate}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <span className="text-gray-500">Files:</span>
-                                <span className="col-span-2 font-medium">{formData.files.length} attached</span>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
-                            <Save className="h-4 w-4" />
-                            Draft auto-saved. You can review before final submission.
-                        </div>
-                    </div>
-                )}
+            <SKPSection
+                title="A. UTAMA"
+                rows={data.utama}
+                onChange={(newRows) => updateSection('utama', () => newRows)}
+                onEditorFocus={setActiveEditor}
+                feedback={feedback?.sections?.utama}
+            />
 
-            </div>
+            <SKPSection
+                title="B. TAMBAHAN"
+                rows={data.tambahan}
+                onChange={(newRows) => updateSection('tambahan', () => newRows)}
+                onEditorFocus={setActiveEditor}
+                feedback={feedback?.sections?.tambahan}
+            />
 
-            {/* Navigation Actions */}
-            <div className="flex justify-between">
+            {/* SECTION 2: LAMPIRAN */}
+            <SectionHeader title="Lampiran" />
+
+            <SKPSection
+                title="DUKUNGAN SUMBER DAYA"
+                rows={data.dukungan}
+                onChange={(newRows) => updateSection('dukungan', () => newRows)}
+                onEditorFocus={setActiveEditor}
+                feedback={feedback?.sections?.dukungan}
+            />
+
+            <SKPSection
+                title="SKEMA PERTANGGUNGJAWABAN"
+                rows={data.skema}
+                onChange={(newRows) => updateSection('skema', () => newRows)}
+                onEditorFocus={setActiveEditor}
+                feedback={feedback?.sections?.skema}
+            />
+
+            <SKPSection
+                title="KONSEKUENSI"
+                rows={data.konsekuensi}
+                onChange={(newRows) => updateSection('konsekuensi', () => newRows)}
+                onEditorFocus={setActiveEditor}
+                feedback={feedback?.sections?.konsekuensi}
+            />
+
+            {/* Floating Submit Button */}
+            <div className="fixed bottom-6 right-6 z-50">
                 <Button
-                    variant="outline"
-                    onClick={prevStep}
-                    disabled={currentStep === 1}
+                    onClick={() => setShowConfirm(true)}
+                    variant="gradient"
+                    className="shadow-xl shadow-purple-500/30 px-8 py-4 rounded-full text-base font-bold flex items-center gap-2 transform hover:scale-105 transition-all"
                 >
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                    <Send size={18} />
+                    {existingSkpId ? 'Kirim Revisi SKP' : 'Ajukan SKP'}
                 </Button>
-
-                {currentStep < 4 ? (
-                    <Button onClick={nextStep}>
-                        Next <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-                ) : (
-                    <Button onClick={handleSubmit} variant="gradient" isLoading={isLoading}>
-                        Submit Application <Check className="ml-2 h-4 w-4" />
-                    </Button>
-                )}
             </div>
         </div>
     );

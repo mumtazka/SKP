@@ -5,7 +5,8 @@ const COLLECTION_KEYS = {
     SKPS: 'skp_skps',
     DEPARTMENTS: 'skp_departments',
     STUDY_PROGRAMS: 'skp_study_programs',
-    SESSION: 'skp_session'
+    SESSION: 'skp_session',
+    NOTIFICATIONS: 'skp_notifications'
 };
 
 // Initialize Mock Data if empty
@@ -50,6 +51,41 @@ const getStudyProgramName = (studyProgramId) => {
 };
 
 export const api = {
+    notifications: {
+        getAll: async (userId, role) => {
+            await new Promise(resolve => setTimeout(resolve, 300));
+            const notes = getCollection(COLLECTION_KEYS.NOTIFICATIONS);
+            // Return notifications for this specific user OR targeted to their role
+            return notes.filter(n =>
+                n.targetUserId === userId ||
+                (n.targetRole && role === n.targetRole)
+            ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        },
+        create: async (notification) => {
+            const notes = getCollection(COLLECTION_KEYS.NOTIFICATIONS);
+            const newNote = {
+                id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                read: false,
+                createdAt: new Date().toISOString(),
+                ...notification
+            };
+            setCollection(COLLECTION_KEYS.NOTIFICATIONS, [...notes, newNote]);
+            return newNote;
+        },
+        markAsRead: async (notificationId) => {
+            const notes = getCollection(COLLECTION_KEYS.NOTIFICATIONS);
+            const updated = notes.map(n => n.id === notificationId ? { ...n, read: true } : n);
+            setCollection(COLLECTION_KEYS.NOTIFICATIONS, updated);
+        },
+        getUnreadCount: async (userId, role) => {
+            const notes = getCollection(COLLECTION_KEYS.NOTIFICATIONS);
+            return notes.filter(n =>
+                (n.targetUserId === userId || (n.targetRole && role === n.targetRole)) &&
+                !n.read
+            ).length;
+        }
+    },
+
     auth: {
         login: async (username, password) => {
             await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
@@ -110,6 +146,20 @@ export const api = {
 
             const { password, ...rest } = users[index];
             return rest;
+        },
+        changePassword: async (userId, currentPassword, newPassword) => {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            const users = getCollection(COLLECTION_KEYS.USERS);
+            const index = users.findIndex(u => u.id === userId);
+
+            if (index === -1) throw new Error("User not found");
+            if (users[index].password !== currentPassword) throw new Error("Current password is incorrect");
+
+            users[index].password = newPassword;
+            users[index].updatedAt = new Date().toISOString();
+            setCollection(COLLECTION_KEYS.USERS, users);
+
+            return true;
         }
     },
 
@@ -199,7 +249,13 @@ export const api = {
         },
         getAll: async () => { // For admin/HR
             await new Promise(resolve => setTimeout(resolve, 500));
-            return getCollection(COLLECTION_KEYS.SKPS);
+            // Enrich with user info
+            const skps = getCollection(COLLECTION_KEYS.SKPS);
+            const users = getCollection(COLLECTION_KEYS.USERS);
+            return skps.map(s => ({
+                ...s,
+                user: users.find(u => u.id === s.userId)
+            }));
         },
         create: async (skpData) => {
             await new Promise(resolve => setTimeout(resolve, 600));
@@ -213,6 +269,17 @@ export const api = {
             };
             skps.push(newSkp);
             setCollection(COLLECTION_KEYS.SKPS, skps);
+
+            // Notify Staff (Kepegawaian)
+            // We target the role 'kepegawaian'
+            api.notifications.create({
+                targetRole: 'kepegawaian',
+                title: 'New SKP Submission',
+                message: 'A new SKP has been submitted and is pending review.',
+                type: 'info',
+                link: '/kepegawaian/dashboard'
+            });
+
             return newSkp;
         },
         update: async (id, updates) => {
@@ -223,6 +290,26 @@ export const api = {
 
             skps[index] = { ...skps[index], ...updates, updatedAt: new Date().toISOString() };
             setCollection(COLLECTION_KEYS.SKPS, skps);
+
+            // If status changed to Approved, notify user
+            if (updates.status === 'Approved') {
+                api.notifications.create({
+                    targetUserId: skps[index].userId,
+                    title: 'SKP Approved',
+                    message: 'Your SKP submission has been approved.',
+                    type: 'success',
+                    link: '/dosen/progress'
+                });
+            } else if (updates.status === 'Rejected') {
+                api.notifications.create({
+                    targetUserId: skps[index].userId,
+                    title: 'SKP Needs Revision',
+                    message: 'Your SKP submission was rejected. Please review comments and resubmit.',
+                    type: 'error',
+                    link: '/dosen/skp/submit' // Assuming this is where they edit
+                });
+            }
+
             return skps[index];
         }
     },

@@ -26,13 +26,32 @@ const KepegawaianDashboard = () => {
         setLoading(true);
         try {
             const skps = await api.skps.getAll();
-            const pending = skps.filter(s => s.status === 'Pending' || s.status === 'Rejected'); // Show Rejected too? Maybe not, usually they go back to user. Show Pending.
+            const allUsers = await api.users.getAll();
 
-            setPendingSkps(pending.filter(s => s.status === 'Pending'));
+            // Filter SKPs to only show those from lecturers assigned to this Kepegawaian user
+            const myAssignedLecturers = allUsers.filter(u =>
+                u.role === 'dosen' &&
+                u.raters?.pejabatPenilaiId === user.id
+            );
+            const myAssignedLecturerIds = myAssignedLecturers.map(l => l.id);
+
+            console.log('[Kepegawaian Dashboard] Current user ID:', user.id);
+            console.log('[Kepegawaian Dashboard] My assigned lecturers:', myAssignedLecturers.map(l => l.fullName));
+            console.log('[Kepegawaian Dashboard] My assigned lecturer IDs:', myAssignedLecturerIds);
+
+            // Filter to only show SKPs from assigned lecturers
+            const mySkps = skps.filter(s => myAssignedLecturerIds.includes(s.userId));
+            const pending = mySkps.filter(s => s.status === 'Pending');
+
+            console.log('[Kepegawaian Dashboard] Total SKPs:', skps.length);
+            console.log('[Kepegawaian Dashboard] My SKPs:', mySkps.length);
+            console.log('[Kepegawaian Dashboard] Pending SKPs:', pending.length);
+
+            setPendingSkps(pending);
             setStats({
                 pendingApprovals: pending.length,
-                totalEmployees: 30, // Mock
-                evaluationsDone: skps.filter(s => s.status === 'Approved').length
+                totalEmployees: myAssignedLecturers.length,
+                evaluationsDone: mySkps.filter(s => s.status === 'Approved').length
             });
         } catch (error) {
             console.error("Failed to fetch dashboard data", error);

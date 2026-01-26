@@ -114,6 +114,19 @@ export const api = {
                 (n.targetUserId === userId || (n.targetRole && role === n.targetRole)) &&
                 !n.read
             ).length;
+        },
+        delete: async (notificationId) => {
+            const notes = getCollection(COLLECTION_KEYS.NOTIFICATIONS);
+            const filtered = notes.filter(n => n.id !== notificationId);
+            setCollection(COLLECTION_KEYS.NOTIFICATIONS, filtered);
+        },
+        deleteAll: async (userId, role) => {
+            const notes = getCollection(COLLECTION_KEYS.NOTIFICATIONS);
+            const remaining = notes.filter(n =>
+                n.targetUserId !== userId &&
+                (!n.targetRole || role !== n.targetRole)
+            );
+            setCollection(COLLECTION_KEYS.NOTIFICATIONS, remaining);
         }
     },
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Bell, Menu, User as UserIcon, Settings, LogOut, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { Bell, Menu, User as UserIcon, Settings, LogOut, CheckCircle, AlertCircle, Info, Trash2, X } from 'lucide-react';
 import { api } from '@/services/api';
 
 const UserDropdown = ({ user, logout }) => {
@@ -145,6 +145,25 @@ const NotificationDropdown = ({ user }) => {
         setOpen(false);
     };
 
+    const handleDelete = async (e, id) => {
+        e.stopPropagation();
+        try {
+            await api.notifications.delete(id);
+            loadNotifications();
+        } catch (error) {
+            console.error('Failed to delete notification', error);
+        }
+    };
+
+    const handleClearAll = async () => {
+        try {
+            await api.notifications.deleteAll(user.id, user.role);
+            loadNotifications();
+        } catch (error) {
+            console.error('Failed to clear notifications', error);
+        }
+    };
+
     const getNotificationIcon = (type) => {
         switch (type) {
             case 'success':
@@ -172,11 +191,22 @@ const NotificationDropdown = ({ user }) => {
                 <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-100 rounded-xl shadow-lg z-50 animate-in fade-in zoom-in duration-200">
                     {/* Header */}
                     <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-                        <h3 className="font-semibold text-gray-900">Notifications</h3>
-                        {unreadCount > 0 && (
-                            <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">
-                                {unreadCount}
-                            </span>
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900">Notifications</h3>
+                            {unreadCount > 0 && (
+                                <span className="bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </div>
+                        {notifications.length > 0 && (
+                            <button
+                                onClick={handleClearAll}
+                                className="text-[11px] text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                            >
+                                <Trash2 size={12} />
+                                Clear all
+                            </button>
                         )}
                     </div>
 
@@ -195,7 +225,7 @@ const NotificationDropdown = ({ user }) => {
                                     className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50/30' : ''
                                         }`}
                                 >
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-3 relative group/item">
                                         <div className="shrink-0 mt-0.5">
                                             {getNotificationIcon(notification.type)}
                                         </div>
@@ -215,11 +245,18 @@ const NotificationDropdown = ({ user }) => {
                                                 })}
                                             </p>
                                         </div>
-                                        {!notification.read && (
-                                            <div className="shrink-0">
-                                                <span className="h-2 w-2 bg-blue-500 rounded-full block"></span>
-                                            </div>
-                                        )}
+                                        <div className="shrink-0 flex flex-col items-center justify-between py-1">
+                                            {!notification.read && (
+                                                <span className="h-2 w-2 bg-blue-500 rounded-full block mb-2"></span>
+                                            )}
+                                            <button
+                                                onClick={(e) => handleDelete(e, notification.id)}
+                                                className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-all opacity-0 group-hover/item:opacity-100"
+                                                title="Delete"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </button>
                             ))

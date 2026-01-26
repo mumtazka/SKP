@@ -51,10 +51,6 @@ const AssignRater = () => {
     };
 
     const handleSaveAssignment = async () => {
-        console.log("[AssignRater] Saving assignment...");
-        console.log("[AssignRater] Selected Lecturer ID:", selectedLecturer?.id);
-        console.log("[AssignRater] Form Data:", formData);
-
         if (!formData.pejabatPenilaiId) {
             toast.error("Please select Pejabat Penilai");
             return;
@@ -69,10 +65,8 @@ const AssignRater = () => {
                     pejabatPenilaiId: formData.pejabatPenilaiId
                 }
             };
-            console.log("[AssignRater] Payload:", updatePayload);
 
             await api.users.update(selectedLecturer.id, updatePayload);
-            console.log("[AssignRater] API update completed.");
 
             toast.success(`Raters assigned for ${selectedLecturer.fullName}`);
             setIsModalOpen(false);

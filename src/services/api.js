@@ -233,24 +233,12 @@ export const api = {
         },
         update: async (id, updates) => {
             await new Promise(resolve => setTimeout(resolve, 500));
-            console.log(`[API] updating user ${id} with:`, JSON.stringify(updates));
-
             const users = getCollection(COLLECTION_KEYS.USERS);
             const index = users.findIndex(u => u.id == id);
-            if (index === -1) {
-                console.error(`[API] User ${id} not found for update!`);
-                throw new Error("User not found");
-            }
+            if (index === -1) throw new Error("User not found");
 
             users[index] = { ...users[index], ...updates, updatedAt: new Date().toISOString() };
-            console.log(`[API] User updated in memory. New state for ${id}:`, JSON.stringify(users[index]));
-
             setCollection(COLLECTION_KEYS.USERS, users);
-            console.log(`[API] Saved to localStorage key: ${COLLECTION_KEYS.USERS}`);
-
-            // Verify immediate read-back
-            const saved = getCollection(COLLECTION_KEYS.USERS).find(u => u.id == id);
-            console.log(`[API] Verification read-back for ${id}:`, JSON.stringify(saved));
 
             const { password, ...rest } = users[index];
             rest.departmentName = getDepartmentName(rest.departmentId);

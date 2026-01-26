@@ -240,17 +240,6 @@ const SubmitSKP = () => {
                 </div>
 
                 <div className="text-xs text-gray-400 font-medium flex items-center gap-2">
-                    <button
-                        onClick={() => {
-                            toast.info("Refreshing data...");
-                            // This triggers the useEffect logic if we extract it, 
-                            // but for now let's just force a window focus event or similar
-                            window.dispatchEvent(new Event('focus'));
-                        }}
-                        className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"
-                    >
-                        Refresh Rater Data
-                    </button>
                     {isSaving ? (
                         <span className="animate-pulse text-primary">Saving draft...</span>
                     ) : lastSaved ? (
@@ -342,14 +331,6 @@ const SubmitSKP = () => {
                     <Send size={18} />
                     {existingSkpId ? 'Kirim Revisi SKP' : 'Ajukan SKP'}
                 </Button>
-            </div>
-
-            {/* DEBUG INFO - REMOVE AFTER FIXING */}
-            <div className="mt-12 p-4 bg-gray-100 border rounded font-mono text-xs opacity-75">
-                <p><strong>DEBUG INFO:</strong></p>
-                <p>User ID: {user?.id}</p>
-                <p>Rater ID stored in user: {JSON.stringify(user?.raters)}</p>
-                <p>Evaluator Object: {JSON.stringify(evaluator)}</p>
             </div>
         </div>
     );

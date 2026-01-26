@@ -15,7 +15,7 @@ const UserManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [formData, setFormData] = useState({
-        username: '', fullName: '', email: '', role: 'dosen', department: 'Teknik Informatika'
+        username: '', fullName: '', email: '', password: '', role: 'dosen', department: 'Teknik Informatika'
     });
 
     const fetchUsers = async () => {
@@ -38,16 +38,17 @@ const UserManagement = () => {
         e.preventDefault();
         try {
             if (editingUser) {
-                await api.users.update(editingUser.id, formData);
+                const updates = { ...formData };
+                if (!updates.password) delete updates.password;
+                await api.users.update(editingUser.id, updates);
                 toast.success("User updated successfully");
             } else {
-                // Add default password for new users
-                await api.users.create({ ...formData, password: 'password123', status: true });
+                await api.users.create({ ...formData, status: true });
                 toast.success("User created successfully");
             }
             setIsModalOpen(false);
             setEditingUser(null);
-            setFormData({ username: '', fullName: '', email: '', role: 'dosen', department: 'Teknik Informatika' });
+            setFormData({ username: '', fullName: '', email: '', password: '', role: 'dosen', department: 'Teknik Informatika' });
             fetchUsers();
         } catch (err) {
             toast.error(err.message);
@@ -60,6 +61,7 @@ const UserManagement = () => {
             username: user.username,
             fullName: user.fullName,
             email: user.email,
+            password: '',
             role: user.role,
             department: user.department || ''
         });
@@ -202,14 +204,26 @@ const UserManagement = () => {
                             />
                         </div>
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Email</label>
-                        <Input
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            required
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Email</label>
+                            <Input
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Password</label>
+                            <Input
+                                type="text"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                required={!editingUser}
+                                placeholder={editingUser ? "Blank to keep current" : "Enter password"}
+                            />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">

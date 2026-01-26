@@ -39,6 +39,25 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const register = async (userData) => {
+        try {
+            // calculated default role can be handled here or inside api.users.create if needed
+            // For now assuming userData contains role
+            await api.users.create(userData);
+
+            // Auto login after registration
+            const success = await login(userData.username, userData.password);
+            if (success) {
+                toast.success("Account created successfully!");
+                return true;
+            }
+            return false;
+        } catch (error) {
+            toast.error(error.message || "Registration failed");
+            return false;
+        }
+    };
+
     const logout = async () => {
         await api.auth.logout();
         setUser(null);
@@ -54,7 +73,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading, hasRole }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, hasRole }}>
             {children}
         </AuthContext.Provider>
     );

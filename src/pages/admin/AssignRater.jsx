@@ -16,8 +16,7 @@ const AssignRater = () => {
 
     // Form State
     const [formData, setFormData] = useState({
-        pejabatPenilaiId: '',
-        atasanPejabatPenilaiId: ''
+        pejabatPenilaiId: ''
     });
 
     useEffect(() => {
@@ -46,15 +45,18 @@ const AssignRater = () => {
         setSelectedLecturer(lecturer);
         // If lecturer already has assignments (mocked check), populate form
         setFormData({
-            pejabatPenilaiId: lecturer.raters?.pejabatPenilaiId || '',
-            atasanPejabatPenilaiId: lecturer.raters?.atasanPejabatPenilaiId || ''
+            pejabatPenilaiId: lecturer.raters?.pejabatPenilaiId || ''
         });
         setIsModalOpen(true);
     };
 
     const handleSaveAssignment = async () => {
-        if (!formData.pejabatPenilaiId || !formData.atasanPejabatPenilaiId) {
-            toast.error("Please select both raters");
+        console.log("[AssignRater] Saving assignment...");
+        console.log("[AssignRater] Selected Lecturer ID:", selectedLecturer?.id);
+        console.log("[AssignRater] Form Data:", formData);
+
+        if (!formData.pejabatPenilaiId) {
+            toast.error("Please select Pejabat Penilai");
             return;
         }
 
@@ -62,18 +64,21 @@ const AssignRater = () => {
             // Mock API call to save assignment
             // In reality, we would call api.users.update or a dedicated endpoint
             // For now, we update local state or use api.users.update to adding a 'raters' field
-
-            await api.users.update(selectedLecturer.id, {
+            const updatePayload = {
                 raters: {
-                    pejabatPenilaiId: formData.pejabatPenilaiId,
-                    atasanPejabatPenilaiId: formData.atasanPejabatPenilaiId
+                    pejabatPenilaiId: formData.pejabatPenilaiId
                 }
-            });
+            };
+            console.log("[AssignRater] Payload:", updatePayload);
+
+            await api.users.update(selectedLecturer.id, updatePayload);
+            console.log("[AssignRater] API update completed.");
 
             toast.success(`Raters assigned for ${selectedLecturer.fullName}`);
             setIsModalOpen(false);
             loadUsers(); // Reload to see changes
         } catch (error) {
+            console.error("[AssignRater] Save error:", error);
             toast.error("Failed to save assignment");
         }
     };
@@ -83,7 +88,7 @@ const AssignRater = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Assign Raters</h1>
-                    <p className="text-gray-500">Manage Pejabat Penilai & Atasan Pejabat Penilai for Lecturers</p>
+                    <p className="text-gray-500">Manage Pejabat Penilai for Lecturers</p>
                 </div>
             </div>
 
@@ -129,16 +134,6 @@ const AssignRater = () => {
                                         <div className="flex items-center gap-2">
                                             {pejabatPenilai ? (
                                                 <span className="font-medium truncate block">{pejabatPenilai.fullName}</span>
-                                            ) : (
-                                                <span className="text-gray-400 italic">Not assigned</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="text-sm">
-                                        <p className="text-gray-500 text-xs mb-1">Atasan Pejabat Penilai</p>
-                                        <div className="flex items-center gap-2">
-                                            {atasanPejabatPenilai ? (
-                                                <span className="font-medium truncate block">{atasanPejabatPenilai.fullName}</span>
                                             ) : (
                                                 <span className="text-gray-400 italic">Not assigned</span>
                                             )}
@@ -199,25 +194,14 @@ const AssignRater = () => {
                                 <select
                                     className="w-full rounded-lg border border-gray-300 p-2.5 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                                     value={formData.pejabatPenilaiId}
-                                    onChange={(e) => setFormData({ ...formData, pejabatPenilaiId: e.target.value })}
+                                    onChange={(e) => {
+                                        const selectedId = e.target.value;
+                                        // Find user to preserve original ID type (string vs number)
+                                        const user = users.find(u => String(u.id) === selectedId);
+                                        setFormData({ ...formData, pejabatPenilaiId: user ? user.id : '' });
+                                    }}
                                 >
                                     <option value="">Select Pejabat Penilai</option>
-                                    {users.filter(u => u.id !== selectedLecturer.id).map(u => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.fullName} ({u.role})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Atasan Pejabat Penilai</label>
-                                <select
-                                    className="w-full rounded-lg border border-gray-300 p-2.5 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                                    value={formData.atasanPejabatPenilaiId}
-                                    onChange={(e) => setFormData({ ...formData, atasanPejabatPenilaiId: e.target.value })}
-                                >
-                                    <option value="">Select Atasan Pejabat Penilai</option>
                                     {users.filter(u => u.id !== selectedLecturer.id).map(u => (
                                         <option key={u.id} value={u.id}>
                                             {u.fullName} ({u.role})

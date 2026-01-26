@@ -38,11 +38,11 @@ const SKPHeader = ({ employee, evaluator }) => {
                     </h3>
                 </div>
                 <div className="space-y-1">
-                    <InfoRow label="Nama" value={evaluator?.fullName || 'Prof. Dr. ALI SATIA GRAHA, S.Pd., M.Kes.'} />
-                    <InfoRow label="NIP" value={evaluator?.identityNumber || '197504162003121002'} />
-                    <InfoRow label="Pangkat/Gol." value={evaluator?.pangkat || 'Pembina Utama Madya, IV/d'} />
-                    <InfoRow label="Jabatan" value={evaluator?.jabatan || 'S.3.4.5'} />
-                    <InfoRow label="Unit Kerja" value={evaluator?.unit || 'Universitas Negeri Yogyakarta'} />
+                    <InfoRow label="Nama" value={evaluator?.fullName || '-'} />
+                    <InfoRow label="NIP" value={evaluator?.identityNumber || '-'} />
+                    <InfoRow label="Pangkat/Gol." value={evaluator?.pangkat || '-'} />
+                    <InfoRow label="Jabatan" value={evaluator?.jabatan || '-'} />
+                    <InfoRow label="Unit Kerja" value={evaluator?.unit || '-'} />
                 </div>
             </div>
         </div>

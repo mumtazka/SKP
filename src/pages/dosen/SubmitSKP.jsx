@@ -129,15 +129,53 @@ const SubmitSKP = () => {
     }, [user]); // Run once when user loads
 
     useEffect(() => {
-        if (user) {
-            setEvaluator({
-                fullName: 'Prof. Dr. ALI SATIA GRAHA, S.Pd., M.Kes.',
-                identityNumber: '197504162003121002',
-                pangkat: 'Pembina Utama Madya, IV/d',
-                jabatan: 'Dekan',
-                unit: 'Universitas Negeri Yogyakarta'
-            });
-        }
+        const fetchEvaluator = async () => {
+            if (!user) return;
+
+            try {
+                console.log(`[SubmitSKP] Fetching fresh user data for ID: ${user.id}`);
+                // 1. Get fresh user data directly from storage/API to bypass stale session
+                const freshUser = await api.users.getById(user.id);
+                console.log("[SubmitSKP] Fresh user data:", freshUser);
+
+                if (freshUser.raters?.pejabatPenilaiId) {
+                    console.log(`[SubmitSKP] Found Rater ID: ${freshUser.raters.pejabatPenilaiId}`);
+                    // 2. If assigned, fetch the rater details
+                    const rater = await api.users.getById(freshUser.raters.pejabatPenilaiId);
+                    console.log("[SubmitSKP] Rater details fetched:", rater);
+
+                    setEvaluator({
+                        id: rater.id,
+                        fullName: rater.fullName,
+                        identityNumber: rater.identityNumber || '-',
+                        pangkat: rater.pangkat || '-',
+                        jabatan: rater.jabatan || 'Pejabat Penilai',
+                        unit: rater.departmentName || 'Universitas Negeri Yogyakarta'
+                    });
+                    toast.success("Rater data found and assigned.");
+                } else {
+                    console.log("[SubmitSKP] No rater assigned (raters field missing or empty).");
+                    // Default is blank/null if not set
+                    setEvaluator(null);
+                    toast.warning("No rater assigned for this user.");
+                }
+            } catch (error) {
+                console.error("[SubmitSKP] Failed to fetch evaluator info", error);
+                setEvaluator(null);
+                toast.error(`Failed to fetch rater: ${error.message}`);
+            }
+        };
+
+        fetchEvaluator();
+
+        // Add focus listener to refresh data when user switches tabs/windows
+        const onFocus = () => {
+            console.log("[SubmitSKP] Window focused, refreshing evaluator data...");
+            fetchEvaluator();
+        };
+
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
     }, [user]);
 
     const handleConfirmSubmit = async () => {
@@ -202,6 +240,17 @@ const SubmitSKP = () => {
                 </div>
 
                 <div className="text-xs text-gray-400 font-medium flex items-center gap-2">
+                    <button
+                        onClick={() => {
+                            toast.info("Refreshing data...");
+                            // This triggers the useEffect logic if we extract it, 
+                            // but for now let's just force a window focus event or similar
+                            window.dispatchEvent(new Event('focus'));
+                        }}
+                        className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"
+                    >
+                        Refresh Rater Data
+                    </button>
                     {isSaving ? (
                         <span className="animate-pulse text-primary">Saving draft...</span>
                     ) : lastSaved ? (
@@ -294,8 +343,17 @@ const SubmitSKP = () => {
                     {existingSkpId ? 'Kirim Revisi SKP' : 'Ajukan SKP'}
                 </Button>
             </div>
+
+            {/* DEBUG INFO - REMOVE AFTER FIXING */}
+            <div className="mt-12 p-4 bg-gray-100 border rounded font-mono text-xs opacity-75">
+                <p><strong>DEBUG INFO:</strong></p>
+                <p>User ID: {user?.id}</p>
+                <p>Rater ID stored in user: {JSON.stringify(user?.raters)}</p>
+                <p>Evaluator Object: {JSON.stringify(evaluator)}</p>
+            </div>
         </div>
     );
 };
+
 
 export default SubmitSKP;

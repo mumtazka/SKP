@@ -57,23 +57,36 @@ const AssignRater = () => {
         }
 
         try {
-            // Mock API call to save assignment
-            // In reality, we would call api.users.update or a dedicated endpoint
-            // For now, we update local state or use api.users.update to adding a 'raters' field
+            // Ensure ID is a string to match typical localstorage format behavior
+            const finalId = String(formData.pejabatPenilaiId);
+
             const updatePayload = {
                 raters: {
-                    pejabatPenilaiId: formData.pejabatPenilaiId
+                    pejabatPenilaiId: finalId
                 }
             };
 
+            // 1. Update
             await api.users.update(selectedLecturer.id, updatePayload);
+
+            // 2. Verify Update (Double Check)
+            const updatedUser = await api.users.getById(selectedLecturer.id);
+            if (String(updatedUser.raters?.pejabatPenilaiId) !== finalId) {
+                throw new Error("Verification failed: Data not saved correctly.");
+            }
 
             toast.success(`Raters assigned for ${selectedLecturer.fullName}`);
             setIsModalOpen(false);
-            loadUsers(); // Reload to see changes
+
+            // 3. Force reload data
+            await loadUsers();
+
+            // 4. Force global event for other tabs
+            window.dispatchEvent(new Event('storage'));
+
         } catch (error) {
-            console.error("[AssignRater] Save error:", error);
-            toast.error("Failed to save assignment");
+            console.error("Assignment Error:", error);
+            toast.error(`Failed to save: ${error.message}`);
         }
     };
 

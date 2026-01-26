@@ -76,6 +76,10 @@ export const INITIAL_USERS = [
     attachments: null,
     isHomebase: true,
     jabatan: "Lektor",
+    pangkat: "III/d",
+    raters: {
+      pejabatPenilaiId: 'b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e' // Budi Santoso (Kepegawaian)
+    },
     status: true,
     createdAt: "2024-01-15T08:00:00Z",
     updatedAt: "2024-03-10T08:30:00Z",
@@ -98,6 +102,7 @@ export const INITIAL_USERS = [
     attachments: null,
     isHomebase: false,
     jabatan: "Kepala Bagian SDM",
+    pangkat: "III/c",
     status: true,
     createdAt: "2023-01-10T08:00:00Z",
     updatedAt: "2024-03-11T07:45:00Z",

@@ -57,35 +57,56 @@ const AssignRater = () => {
         }
 
         try {
+            console.log("=== STARTING RATER ASSIGNMENT ===");
+            console.log("Selected Lecturer:", selectedLecturer);
+            console.log("Form Data:", formData);
+
             // Ensure ID is a string to match typical localstorage format behavior
             const finalId = String(formData.pejabatPenilaiId);
+            console.log("Final Pejabat Penilai ID (as string):", finalId);
 
             const updatePayload = {
                 raters: {
                     pejabatPenilaiId: finalId
                 }
             };
+            console.log("Update Payload:", updatePayload);
 
             // 1. Update
-            await api.users.update(selectedLecturer.id, updatePayload);
+            console.log(`Calling api.users.update for user ID: ${selectedLecturer.id}`);
+            const updateResult = await api.users.update(selectedLecturer.id, updatePayload);
+            console.log("Update Result:", updateResult);
 
             // 2. Verify Update (Double Check)
+            console.log("Verifying update by fetching user again...");
             const updatedUser = await api.users.getById(selectedLecturer.id);
-            if (String(updatedUser.raters?.pejabatPenilaiId) !== finalId) {
+            console.log("Updated User from API:", updatedUser);
+            console.log("Raters field:", updatedUser.raters);
+
+            if (!updatedUser.raters || String(updatedUser.raters?.pejabatPenilaiId) !== finalId) {
+                console.error("VERIFICATION FAILED!");
+                console.error("Expected:", finalId);
+                console.error("Got:", updatedUser.raters?.pejabatPenilaiId);
                 throw new Error("Verification failed: Data not saved correctly.");
             }
 
+            console.log("✓ Verification successful!");
             toast.success(`Raters assigned for ${selectedLecturer.fullName}`);
             setIsModalOpen(false);
 
             // 3. Force reload data
+            console.log("Reloading users list...");
             await loadUsers();
 
             // 4. Force global event for other tabs
+            console.log("Dispatching storage event...");
             window.dispatchEvent(new Event('storage'));
 
+            console.log("=== RATER ASSIGNMENT COMPLETE ===");
+
         } catch (error) {
-            console.error("Assignment Error:", error);
+            console.error("=== ASSIGNMENT ERROR ===");
+            console.error("Error:", error);
             toast.error(`Failed to save: ${error.message}`);
         }
     };

@@ -133,34 +133,47 @@ const SubmitSKP = () => {
             if (!user) return;
 
             try {
-                console.log(`[SubmitSKP] Fetching fresh user data for ID: ${user.id}`);
+                console.log("=== [SubmitSKP] FETCHING EVALUATOR DATA ===");
+                console.log(`[SubmitSKP] User ID: ${user.id}`);
+                console.log(`[SubmitSKP] User object:`, user);
+
                 // 1. Get fresh user data directly from storage/API to bypass stale session
                 const freshUser = await api.users.getById(user.id);
                 console.log("[SubmitSKP] Fresh user data:", freshUser);
+                console.log("[SubmitSKP] Fresh user raters field:", freshUser.raters);
 
                 if (freshUser.raters?.pejabatPenilaiId) {
-                    console.log(`[SubmitSKP] Found Rater ID: ${freshUser.raters.pejabatPenilaiId}`);
+                    console.log(`[SubmitSKP] ✓ Found Rater ID: ${freshUser.raters.pejabatPenilaiId}`);
+
                     // 2. If assigned, fetch the rater details
+                    console.log(`[SubmitSKP] Fetching rater details for ID: ${freshUser.raters.pejabatPenilaiId}`);
                     const rater = await api.users.getById(freshUser.raters.pejabatPenilaiId);
                     console.log("[SubmitSKP] Rater details fetched:", rater);
 
-                    setEvaluator({
+                    const evaluatorData = {
                         id: rater.id,
                         fullName: rater.fullName,
                         identityNumber: rater.identityNumber || '-',
                         pangkat: rater.pangkat || '-',
                         jabatan: rater.jabatan || 'Pejabat Penilai',
                         unit: rater.departmentName || 'Universitas Negeri Yogyakarta'
-                    });
-                    toast.success("Rater data found and assigned.");
+                    };
+
+                    console.log("[SubmitSKP] Setting evaluator data:", evaluatorData);
+                    setEvaluator(evaluatorData);
+                    toast.success(`Penilai ditemukan: ${rater.fullName}`);
                 } else {
-                    console.log("[SubmitSKP] No rater assigned (raters field missing or empty).");
+                    console.warn("[SubmitSKP] ✗ No rater assigned!");
+                    console.warn("[SubmitSKP] Raters field is:", freshUser.raters);
                     // Default is blank/null if not set
                     setEvaluator(null);
                     toast.warning("No rater assigned for this user.");
                 }
+
+                console.log("=== [SubmitSKP] EVALUATOR FETCH COMPLETE ===");
             } catch (error) {
-                console.error("[SubmitSKP] Failed to fetch evaluator info", error);
+                console.error("=== [SubmitSKP] EVALUATOR FETCH ERROR ===");
+                console.error("[SubmitSKP] Error:", error);
                 setEvaluator(null);
                 toast.error(`Failed to fetch rater: ${error.message}`);
             }

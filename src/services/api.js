@@ -10,7 +10,7 @@ const COLLECTION_KEYS = {
     VERSION: 'skp_data_version'
 };
 
-const CURRENT_DATA_VERSION = 'v2'; // Increment this to force refresh mock data
+const CURRENT_DATA_VERSION = 'v4'; // Increment this to force refresh mock data
 
 // Initialize Mock Data if empty or version mismatch
 const initializeData = () => {
@@ -23,9 +23,26 @@ const initializeData = () => {
         localStorage.setItem(COLLECTION_KEYS.DEPARTMENTS, JSON.stringify(INITIAL_DEPARTMENTS));
         localStorage.setItem(COLLECTION_KEYS.STUDY_PROGRAMS, JSON.stringify(INITIAL_STUDY_PROGRAMS));
         localStorage.setItem(COLLECTION_KEYS.VERSION, CURRENT_DATA_VERSION);
+        console.log(`[API] Data refreshed to version ${CURRENT_DATA_VERSION}`);
     } else {
         if (!localStorage.getItem(COLLECTION_KEYS.USERS)) {
             localStorage.setItem(COLLECTION_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+        } else {
+            // Ensure all existing users have raters field (backward compatibility)
+            const users = JSON.parse(localStorage.getItem(COLLECTION_KEYS.USERS));
+            let updated = false;
+            const updatedUsers = users.map(user => {
+                if (user.role === 'dosen' && !user.hasOwnProperty('raters')) {
+                    console.log(`[API] Adding raters field to user: ${user.fullName}`);
+                    updated = true;
+                    return { ...user, raters: null };
+                }
+                return user;
+            });
+            if (updated) {
+                localStorage.setItem(COLLECTION_KEYS.USERS, JSON.stringify(updatedUsers));
+                console.log('[API] Users updated with raters field');
+            }
         }
         if (!localStorage.getItem(COLLECTION_KEYS.SKPS)) {
             localStorage.setItem(COLLECTION_KEYS.SKPS, JSON.stringify(INITIAL_SKPS));
@@ -249,8 +266,10 @@ export const api = {
             const index = users.findIndex(u => u.id == id);
             if (index === -1) throw new Error("User not found");
 
+            console.log(`[API] Updating user ${id}:`, updates);
             users[index] = { ...users[index], ...updates, updatedAt: new Date().toISOString() };
             setCollection(COLLECTION_KEYS.USERS, users);
+            console.log(`[API] User ${id} updated successfully. New data:`, users[index]);
 
             const { password, ...rest } = users[index];
             rest.departmentName = getDepartmentName(rest.departmentId);

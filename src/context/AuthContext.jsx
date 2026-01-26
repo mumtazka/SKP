@@ -27,9 +27,9 @@ export const AuthProvider = ({ children }) => {
         checkSession();
     }, []);
 
-    const login = async (username, password) => {
+    const login = async (username, password, rememberMe = false) => {
         try {
-            const { user: loggedInUser } = await api.auth.login(username, password);
+            const { user: loggedInUser } = await api.auth.login(username, password, rememberMe);
             setUser(loggedInUser);
             toast.success(`Welcome back, ${loggedInUser.fullName}`);
             return true;

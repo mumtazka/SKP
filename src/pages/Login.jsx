@@ -12,13 +12,14 @@ const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const success = await login(username, password);
+            const success = await login(username, password, rememberMe);
             if (success) {
                 navigate('/dashboard');
             }
@@ -90,6 +91,8 @@ const Login = () => {
                             <input
                                 type="checkbox"
                                 id="remember"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
                                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer"
                             />
                             <label htmlFor="remember" className="text-xs text-gray-500 cursor-pointer select-none">Remember me</label>

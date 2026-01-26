@@ -22,6 +22,7 @@ const Login = () => {
 
     // UI States
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
@@ -47,7 +48,7 @@ const Login = () => {
                     navigate('/dashboard');
                 }
             } else {
-                const success = await login(username, password);
+                const success = await login(username, password, rememberMe);
                 if (success) {
                     navigate('/dashboard');
                 }
@@ -290,12 +291,12 @@ const Login = () => {
                         </motion.div>
                     </AnimatePresence>
                 </form>
-            </div>
+            </div >
 
             {/* Right Side - Unique Curve & Illustration */}
-            <div className="hidden lg:flex flex-1 relative bg-white items-center justify-center">
+            < div className="hidden lg:flex flex-1 relative bg-white items-center justify-center" >
                 {/* The Purple Layout with Curve */}
-                <motion.div
+                < motion.div
                     className="absolute top-0 bottom-0 right-0 w-[95%] bg-primary rounded-l-[80px] overflow-hidden"
                     initial={{ x: 100, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}

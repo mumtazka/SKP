@@ -101,14 +101,16 @@ export const api = {
     },
 
     auth: {
-        login: async (username, password) => {
+        login: async (username, password, rememberMe = false) => {
             await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
             const users = getCollection(COLLECTION_KEYS.USERS);
             const user = users.find(u => u.username === username && u.password === password);
 
             if (user) {
                 if (!user.status) throw new Error("Account is inactive");
-                const token = btoa(JSON.stringify({ id: user.id, role: user.role, exp: Date.now() + 86400000 }));
+
+                const expiry = Date.now() + 86400000; // 24 hours
+                const token = btoa(JSON.stringify({ id: user.id, role: user.role, exp: expiry }));
                 const sessionUser = { ...user };
                 delete sessionUser.password;
 
@@ -116,16 +118,26 @@ export const api = {
                 sessionUser.departmentName = getDepartmentName(user.departmentId);
                 sessionUser.studyProgramName = getStudyProgramName(user.studyProgramId);
 
-                localStorage.setItem(COLLECTION_KEYS.SESSION, JSON.stringify({ token, user: sessionUser }));
+                const sessionData = { token, user: sessionUser, exp: expiry };
+
+                if (rememberMe) {
+                    localStorage.setItem(COLLECTION_KEYS.SESSION, JSON.stringify(sessionData));
+                    sessionStorage.removeItem(COLLECTION_KEYS.SESSION);
+                } else {
+                    sessionStorage.setItem(COLLECTION_KEYS.SESSION, JSON.stringify(sessionData));
+                    localStorage.removeItem(COLLECTION_KEYS.SESSION);
+                }
+
                 return { token, user: sessionUser };
             }
             throw new Error("Invalid credentials");
         },
         logout: async () => {
             localStorage.removeItem(COLLECTION_KEYS.SESSION);
+            sessionStorage.removeItem(COLLECTION_KEYS.SESSION);
         },
         getSession: () => {
-            const session = localStorage.getItem(COLLECTION_KEYS.SESSION);
+            const session = sessionStorage.getItem(COLLECTION_KEYS.SESSION) || localStorage.getItem(COLLECTION_KEYS.SESSION);
             return session ? JSON.parse(session) : null;
         },
         updateProfile: async (userId, updates) => {
@@ -190,7 +202,7 @@ export const api = {
         getById: async (id) => {
             await new Promise(resolve => setTimeout(resolve, 300));
             const users = getCollection(COLLECTION_KEYS.USERS);
-            const user = users.find(u => u.id === id);
+            const user = users.find(u => u.id == id);
             if (!user) throw new Error("User not found");
             const { password, ...rest } = user;
             rest.departmentName = getDepartmentName(rest.departmentId);
@@ -234,7 +246,7 @@ export const api = {
         update: async (id, updates) => {
             await new Promise(resolve => setTimeout(resolve, 500));
             const users = getCollection(COLLECTION_KEYS.USERS);
-            const index = users.findIndex(u => u.id === id);
+            const index = users.findIndex(u => u.id == id);
             if (index === -1) throw new Error("User not found");
 
             users[index] = { ...users[index], ...updates, updatedAt: new Date().toISOString() };

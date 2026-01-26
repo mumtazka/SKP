@@ -1,85 +1,78 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '@/services/api';
-import StatCard from '@/components/dashboard/StatCard';
-import { Users, FileText, CheckCircle, Database } from 'lucide-react';
+import { Users, FileCheck, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState({
-        totalUsers: 0,
-        totalSkps: 0,
-        totalDepts: 0,
-        avgScore: 0
+        totalDosen: 0,
+        unassigned: 0,
+        assigned: 0
     });
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const [users, skps, depts] = await Promise.all([
-                    api.users.getAll(),
-                    api.skps.getAll(),
-                    api.departments.getAll()
-                ]);
+                // In a real app, this would be an API call
+                const users = await api.users.getAll();
+                const dosen = users.filter(u => u.role === 'dosen');
 
-                const scoredSkps = skps.filter(s => s.score);
-                const avg = scoredSkps.length > 0
-                    ? (scoredSkps.reduce((acc, curr) => acc + (curr.score || 0), 0) / scoredSkps.length).toFixed(1)
-                    : 0;
+                // Mock logic for assignment status (checking if they have "raters" property)
+                // Since we haven't implemented storage for raters yet, we'll assume 0 assigned for now
+                // or check if we added 'raters' to the mock data later.
+                const assignedCount = dosen.filter(d => d.raters).length;
 
                 setStats({
-                    totalUsers: users.length,
-                    totalSkps: skps.length,
-                    totalDepts: depts.length,
-                    avgScore: avg
+                    totalDosen: dosen.length,
+                    unassigned: dosen.length - assignedCount,
+                    assigned: assignedCount
                 });
             } catch (error) {
-                console.error("Failed to fetch admin stats", error);
+                console.error("Failed to fetch stats", error);
             }
         };
+
         fetchStats();
     }, []);
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
+        <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">System Overview</h1>
-                <p className="text-gray-500">Administrative Monitoring Dashboard</p>
+                <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
+                <p className="text-gray-500">Overview of SKP Rater Assignments</p>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Total Users"
-                    value={stats.totalUsers}
-                    icon={Users}
-                    color="primary"
-                    trend="+5 this week"
-                    trendUp={true}
-                />
-                <StatCard
-                    title="Total Submissions"
-                    value={stats.totalSkps}
-                    icon={FileText}
-                    color="info"
-                />
-                <StatCard
-                    title="Departments"
-                    value={stats.totalDepts}
-                    icon={Database}
-                    color="warning"
-                />
-                <StatCard
-                    title="Average Score"
-                    value={stats.avgScore}
-                    icon={CheckCircle}
-                    color="success"
-                    description="System-wide performance"
-                />
-            </div>
-
-            {/* Analytics Chart Placeholder */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 h-64 flex items-center justify-center bg-gray-50">
-                <p className="text-gray-400">Activity Analytics Chart (Recharts) Placeholder</p>
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Dosen</CardTitle>
+                        <Users className="h-4 w-4 text-gray-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.totalDosen}</div>
+                        <p className="text-xs text-gray-500">Active lecturers</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Need Assignment</CardTitle>
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.unassigned}</div>
+                        <p className="text-xs text-gray-500">Lecturers without raters</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Assigned</CardTitle>
+                        <FileCheck className="h-4 w-4 text-green-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.assigned}</div>
+                        <p className="text-xs text-gray-500">Lecturers with assigned raters</p>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

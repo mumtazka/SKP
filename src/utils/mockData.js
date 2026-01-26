@@ -19,12 +19,12 @@ export const INITIAL_USERS = [
   // 1. Super Admin
   {
     id: 'f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c',
-    username: "admin",
-    password: "admin123",
+    username: "superadmin",
+    password: "superadmin123",
     email: "admin@univ.ac.id",
     fullName: "Super Admin",
     identityNumber: "ADM-001",
-    role: "admin",
+    role: "superadmin",
     departmentId: "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
     studyProgramId: null,
     phoneNumber: "+62 821-0000-0001",
@@ -36,6 +36,28 @@ export const INITIAL_USERS = [
     createdAt: "2023-01-01T00:00:00Z",
     updatedAt: "2024-03-11T10:00:00Z",
     photo: "https://ui-avatars.com/api/?name=Super+Admin&background=10B981&color=fff"
+  },
+
+  // 1.5 Admin (Rater Assigner)
+  {
+    id: 'z9y8x7w6-v5u4-3t2s-1r0q-p9o8n7m6l5k4',
+    username: "admin",
+    password: "admin123",
+    email: "newadmin@univ.ac.id",
+    fullName: "Admin SKP",
+    identityNumber: "ADM-SKP-001",
+    role: "admin",
+    departmentId: "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    studyProgramId: null,
+    phoneNumber: "+62 821-0000-0002",
+    address: "Gedung Rektorat Lt. 2, Universitas Indonesia",
+    attachments: null,
+    isHomebase: false,
+    jabatan: "Admin Penilai SKP",
+    status: true,
+    createdAt: "2024-01-20T00:00:00Z",
+    updatedAt: "2024-01-20T00:00:00Z",
+    photo: "https://ui-avatars.com/api/?name=Admin+SKP&background=3B82F6&color=fff"
   },
 
   // 2. Dosen (Lecturer)

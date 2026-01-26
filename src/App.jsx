@@ -25,6 +25,8 @@ import Approval from '@/pages/kepegawaian/Approval';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/AdminDashboard';
+import SuperAdminDashboard from '@/pages/admin/SuperAdminDashboard';
+import AssignRater from '@/pages/admin/AssignRater';
 import UserManagement from '@/pages/admin/UserManagement';
 
 // Placeholders for remaining
@@ -40,6 +42,7 @@ const DashboardRedirect = () => {
     if (!user) return <Navigate to="/login" replace />;
 
     switch (user.role) {
+        case 'superadmin': return <Navigate to="/superadmin/dashboard" replace />;
         case 'admin': return <Navigate to="/admin/dashboard" replace />;
         case 'kepegawaian': return <Navigate to="/kepegawaian/dashboard" replace />;
         default: return <Navigate to="/dosen/dashboard" replace />;
@@ -77,13 +80,19 @@ function App() {
                             <Route path="history" element={<ComingSoon title="Riwayat Pegawai" />} />
                         </Route>
 
-                        {/* ADMIN */}
-                        <Route path="admin">
-                            <Route path="dashboard" element={<AdminDashboard />} />
+                        {/* SUPER ADMIN (Formerly Admin) */}
+                        <Route path="superadmin">
+                            <Route path="dashboard" element={<SuperAdminDashboard />} />
                             <Route path="users" element={<UserManagement />} />
                             <Route path="departments" element={<ComingSoon title="Department Management" />} />
                             <Route path="settings" element={<ComingSoon title="System Settings" />} />
                             <Route path="reports" element={<ComingSoon title="Reports & Analytics" />} />
+                        </Route>
+
+                        {/* NEW ADMIN (Rater Assigner) */}
+                        <Route path="admin">
+                            <Route path="dashboard" element={<AdminDashboard />} />
+                            <Route path="assign" element={<AssignRater />} />
                         </Route>
                     </Route>
 

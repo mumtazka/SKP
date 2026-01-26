@@ -35,12 +35,16 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
             { name: 'Penilaian', icon: ClipboardList, path: '/kepegawaian/evaluations' },
             { name: 'Riwayat Pegawai', icon: Users, path: '/kepegawaian/history' },
         ],
+        superadmin: [
+            { name: 'Dashboard', icon: LayoutDashboard, path: '/superadmin/dashboard' },
+            { name: 'User Management', icon: Users, path: '/superadmin/users' },
+            { name: 'Departments', icon: Building, path: '/superadmin/departments' },
+            { name: 'Settings', icon: Settings, path: '/superadmin/settings' },
+            { name: 'Reports', icon: PieChart, path: '/superadmin/reports' },
+        ],
         admin: [
-            { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-            { name: 'User Management', icon: Users, path: '/admin/users' },
-            { name: 'Departments', icon: Building, path: '/admin/departments' },
-            { name: 'Settings', icon: Settings, path: '/admin/settings' },
-            { name: 'Reports', icon: PieChart, path: '/admin/reports' },
+            { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
+            { name: 'Assign Rater', icon: Users, path: '/admin/assign' },
         ]
     };
 

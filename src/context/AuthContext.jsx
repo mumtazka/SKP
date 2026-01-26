@@ -12,14 +12,18 @@ export const AuthProvider = ({ children }) => {
         const checkSession = () => {
             try {
                 const session = api.auth.getSession();
-                if (session && session.exp > Date.now()) {
-                    setUser(session.user);
-                } else if (session) {
-                    // Token expired
-                    api.auth.logout();
+                if (session && session.token) {
+                    const decoded = JSON.parse(atob(session.token));
+                    if (decoded.exp > Date.now()) {
+                        setUser(session.user);
+                    } else {
+                        // Token expired
+                        api.auth.logout();
+                    }
                 }
             } catch (error) {
                 console.error("Session restoration failed", error);
+                api.auth.logout();
             } finally {
                 setLoading(false);
             }

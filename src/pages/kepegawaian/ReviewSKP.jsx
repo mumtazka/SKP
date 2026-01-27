@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '@/services/api';
 import { toast } from 'sonner';
 import { CheckCircle, XCircle, ArrowLeft, MessageSquare, User, Calendar, MapPin } from 'lucide-react';
@@ -10,9 +10,12 @@ import Modal from '@/components/common/Modal';
 const ReviewSKP = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const returnTo = location.state?.returnTo || '/kepegawaian/approvals';
     const [skp, setSkp] = useState(null);
     const [loading, setLoading] = useState(true);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [approveModalOpen, setApproveModalOpen] = useState(false);
     const [rejectionNote, setRejectionNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,7 +35,7 @@ const ReviewSKP = () => {
                     setSkp(found);
                 } else {
                     toast.error("SKP not found");
-                    navigate('/kepegawaian/approvals');
+                    navigate(returnTo);
                 }
             } catch (err) {
                 toast.error("Failed to load SKP details");
@@ -42,11 +45,9 @@ const ReviewSKP = () => {
             }
         };
         fetchSKP();
-    }, [id, navigate]);
+    }, [id, navigate, returnTo]);
 
-    const handleApprove = async () => {
-        if (!confirm("Are you sure you want to approve this SKP?")) return;
-
+    const executeApprove = async () => {
         setIsSubmitting(true);
         try {
             await api.skps.update(id, {
@@ -55,7 +56,8 @@ const ReviewSKP = () => {
                 approvedAt: new Date().toISOString()
             });
             toast.success("SKP Approved Successfully");
-            navigate('/kepegawaian/approvals');
+            setApproveModalOpen(false);
+            navigate(returnTo);
         } catch (err) {
             toast.error("Failed to approve SKP");
         } finally {
@@ -77,7 +79,7 @@ const ReviewSKP = () => {
             });
             toast.success("SKP Rejected and returned for revision");
             setRejectModalOpen(false);
-            navigate('/kepegawaian/approvals');
+            navigate(returnTo);
         } catch (err) {
             toast.error("Failed to reject SKP");
         } finally {
@@ -94,8 +96,8 @@ const ReviewSKP = () => {
         <div className="max-w-5xl mx-auto pb-24">
             {/* Header / Nav */}
             <div className="mb-6">
-                <Button variant="ghost" onClick={() => navigate('/kepegawaian/approvals')} className="mb-4 pl-0 hover:bg-transparent hover:text-primary">
-                    <ArrowLeft size={16} className="mr-2" /> Back to Approvals
+                <Button variant="ghost" onClick={() => navigate(returnTo)} className="mb-4 pl-0 hover:bg-transparent hover:text-primary">
+                    <ArrowLeft size={16} className="mr-2" /> Back
                 </Button>
 
                 <div className="flex justify-between items-start">
@@ -104,7 +106,7 @@ const ReviewSKP = () => {
                         <p className="text-gray-500">Period: {skp.year}</p>
                     </div>
                     <div className="flex gap-2">
-                        {skp.status === 'Pending' ? (
+                        {skp.status === 'Pending' && (
                             <>
                                 <Button
                                     variant="outline"
@@ -115,18 +117,32 @@ const ReviewSKP = () => {
                                 </Button>
                                 <Button
                                     variant="gradient"
-                                    onClick={handleApprove}
+                                    onClick={() => setApproveModalOpen(true)}
                                 >
                                     <CheckCircle size={18} className="mr-2" /> Approve
                                 </Button>
                             </>
-                        ) : (
-                            <div className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 ${skp.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
-                                skp.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-                                }`}>
-                                {skp.status === 'Approved' && <CheckCircle size={18} />}
-                                {skp.status === 'Rejected' && <XCircle size={18} />}
-                                {skp.status}
+                        )}
+
+                        {skp.status === 'Approved' && (
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    className="bg-white border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 h-10"
+                                    onClick={() => setRejectModalOpen(true)}
+                                    title="Reject (Correct Mistake)"
+                                >
+                                    <XCircle size={18} className="mr-2" /> Reject
+                                </Button>
+                                <div className="px-4 py-2 rounded-lg font-bold flex items-center gap-2 bg-emerald-100 text-emerald-700">
+                                    <CheckCircle size={18} /> Approved
+                                </div>
+                            </div>
+                        )}
+
+                        {skp.status === 'Rejected' && (
+                            <div className="px-4 py-2 rounded-lg font-bold flex items-center gap-2 bg-red-100 text-red-700">
+                                <XCircle size={18} /> Rejected
                             </div>
                         )}
                     </div>
@@ -228,6 +244,35 @@ const ReviewSKP = () => {
                         value={rejectionNote}
                         onChange={(e) => setRejectionNote(e.target.value)}
                     ></textarea>
+                </div>
+            </Modal>
+
+            {/* Approve Confirmation Modal */}
+            <Modal
+                isOpen={approveModalOpen}
+                onClose={() => setApproveModalOpen(false)}
+                title="Confirm Approval"
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setApproveModalOpen(false)}>Cancel</Button>
+                        <Button
+                            variant="gradient"
+                            onClick={executeApprove}
+                            disabled={isSubmitting}
+                        >
+                            Confirm Approval
+                        </Button>
+                    </>
+                }
+            >
+                <div className="text-center py-4">
+                    <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
+                        <CheckCircle size={32} />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Approve this SKP?</h3>
+                    <p className="text-gray-500 max-w-sm mx-auto">
+                        This will mark the SKP as approved and official. You can still reject it later if needed.
+                    </p>
                 </div>
             </Modal>
         </div>

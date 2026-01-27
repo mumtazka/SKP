@@ -38,8 +38,8 @@ const AdminDashboard = () => {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
-                <p className="text-gray-500">Overview of SKP Rater Assignments</p>
+                <h1 className="text-2xl font-bold tracking-tight">Dashboard Admin</h1>
+                <p className="text-gray-500">Ringkasan Penugasan Pejabat Penilai SKP</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
@@ -50,27 +50,27 @@ const AdminDashboard = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.totalDosen}</div>
-                        <p className="text-xs text-gray-500">Active lecturers</p>
+                        <p className="text-xs text-gray-500">Dosen aktif</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Need Assignment</CardTitle>
+                        <CardTitle className="text-sm font-medium">Perlu Penugasan</CardTitle>
                         <AlertCircle className="h-4 w-4 text-red-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.unassigned}</div>
-                        <p className="text-xs text-gray-500">Lecturers without raters</p>
+                        <p className="text-xs text-gray-500">Dosen tanpa penilai</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Assigned</CardTitle>
+                        <CardTitle className="text-sm font-medium">Sudah Ditugaskan</CardTitle>
                         <FileCheck className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.assigned}</div>
-                        <p className="text-xs text-gray-500">Lecturers with assigned raters</p>
+                        <p className="text-xs text-gray-500">Dosen dengan penilai</p>
                     </CardContent>
                 </Card>
             </div>

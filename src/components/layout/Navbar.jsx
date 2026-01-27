@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Bell, Menu, User as UserIcon, Settings, LogOut, CheckCircle, AlertCircle, Info, Trash2, X } from 'lucide-react';
+import { Bell, Menu, User as UserIcon, LogOut, CheckCircle, AlertCircle, Info, Trash2, X } from 'lucide-react';
 import { api } from '@/services/api';
 
 const UserDropdown = ({ user, logout }) => {
@@ -22,11 +22,6 @@ const UserDropdown = ({ user, logout }) => {
     const handleProfileClick = () => {
         setOpen(false);
         navigate('/profile');
-    };
-
-    const handleSettingsClick = () => {
-        setOpen(false);
-        navigate('/settings');
     };
 
     const handleLogout = () => {
@@ -75,14 +70,7 @@ const UserDropdown = ({ user, logout }) => {
                             className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary flex items-center gap-3 transition-colors"
                         >
                             <UserIcon size={16} className="text-gray-400" />
-                            Profile
-                        </button>
-                        <button
-                            onClick={handleSettingsClick}
-                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary flex items-center gap-3 transition-colors"
-                        >
-                            <Settings size={16} className="text-gray-400" />
-                            Settings
+                            Profile & Settings
                         </button>
                     </div>
 

@@ -4,15 +4,22 @@ import { api } from '@/services/api';
 import { DataTable } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
-import { Eye, Download, Loader2 } from 'lucide-react';
+import { Eye, Download, Loader2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import html2pdf from 'html2pdf.js';
+import Modal from '@/components/common/Modal';
 
 const ApprovedSKPList = () => {
     const navigate = useNavigate();
     const [skps, setSkps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [downloadingId, setDownloadingId] = useState(null);
+
+    // Reject Modal State
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [selectedSkpId, setSelectedSkpId] = useState(null);
+    const [rejectionNote, setRejectionNote] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchSkps = async () => {
         setLoading(true);
@@ -172,6 +179,35 @@ const ApprovedSKPList = () => {
         }
     };
 
+    const openRejectModal = (skpId) => {
+        setSelectedSkpId(skpId);
+        setRejectionNote('');
+        setRejectModalOpen(true);
+    };
+
+    const handleReject = async () => {
+        if (!rejectionNote.trim()) {
+            toast.error("Please provide a reason for rejection");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await api.skps.update(selectedSkpId, {
+                status: 'Rejected',
+                feedback: { global: rejectionNote }
+            });
+            toast.success("SKP Rejected and returned for revision");
+            setRejectModalOpen(false);
+            fetchSkps(); // Refresh list
+        } catch (err) {
+            toast.error("Failed to reject SKP");
+        } finally {
+            setIsSubmitting(false);
+            setSelectedSkpId(null);
+        }
+    };
+
     const columns = [
         {
             header: "User",
@@ -210,7 +246,7 @@ const ApprovedSKPList = () => {
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => navigate(`/kepegawaian/approval/${row.id}`)}
+                        onClick={() => navigate(`/kepegawaian/approval/${row.id}`, { state: { returnTo: '/kepegawaian/skp-list' } })}
                         className="h-8 text-xs font-medium border-gray-200 hover:border-primary hover:text-primary transition-colors"
                     >
                         <Eye size={14} className="mr-1.5" /> Detail
@@ -229,6 +265,15 @@ const ApprovedSKPList = () => {
                                 <Download size={14} className="mr-1.5" /> PDF
                             </>
                         )}
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRejectModal(row.id)}
+                        className="h-8 text-xs font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors"
+                        title="Reject (Correct Mistake)"
+                    >
+                        <XCircle size={14} className="mr-1.5" /> Reject
                     </Button>
                 </div>
             )

@@ -1,30 +1,37 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import { DataTable } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Badge } from '@/components/common/Badge';
 import Modal from '@/components/common/Modal';
-import { Plus, Search, Edit2, Trash2, Filter, Download } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const UserManagement = () => {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [departments, setDepartments] = useState([]);
     const [formData, setFormData] = useState({
-        username: '', fullName: '', email: '', password: '', role: 'dosen', department: 'Teknik Informatika'
+        username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: ''
     });
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
             const data = await api.users.getAll();
-            setUsers(data);
+            // Filter: If current user is 'admin', hide 'superadmin' users
+            const filteredData = currentUser?.role === 'admin'
+                ? data.filter(u => u.role !== 'superadmin')
+                : data;
+            setUsers(filteredData);
         } catch (err) {
-            toast.error("Failed to fetch users");
+            toast.error("Gagal memuat daftar pengguna");
         } finally {
             setLoading(false);
         }
@@ -32,7 +39,17 @@ const UserManagement = () => {
 
     useEffect(() => {
         fetchUsers();
+        fetchDepartments();
     }, []);
+
+    const fetchDepartments = async () => {
+        try {
+            const data = await api.departments.getAll();
+            setDepartments(data);
+        } catch (err) {
+            console.error('Failed to fetch departments:', err);
+        }
+    };
 
     const handleCreateOrUpdate = async (e) => {
         e.preventDefault();
@@ -41,14 +58,14 @@ const UserManagement = () => {
                 const updates = { ...formData };
                 if (!updates.password) delete updates.password;
                 await api.users.update(editingUser.id, updates);
-                toast.success("User updated successfully");
+                toast.success("Pengguna berhasil diperbarui");
             } else {
                 await api.users.create({ ...formData, status: true });
-                toast.success("User created successfully");
+                toast.success("Pengguna berhasil dibuat");
             }
             setIsModalOpen(false);
             setEditingUser(null);
-            setFormData({ username: '', fullName: '', email: '', password: '', role: 'dosen', department: 'Teknik Informatika' });
+            setFormData({ username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: '' });
             fetchUsers();
         } catch (err) {
             toast.error(err.message);
@@ -63,19 +80,19 @@ const UserManagement = () => {
             email: user.email,
             password: '',
             role: user.role,
-            department: user.department || ''
+            departmentId: user.departmentId || ''
         });
         setIsModalOpen(true);
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this user?")) {
+        if (window.confirm("Apakah Anda yakin ingin menghapus pengguna ini?")) {
             try {
                 await api.users.delete(id);
-                toast.success("User deleted");
+                toast.success("Pengguna dihapus");
                 fetchUsers();
             } catch (err) {
-                toast.error("Failed to delete user");
+                toast.error("Gagal menghapus pengguna");
             }
         }
     };
@@ -88,7 +105,7 @@ const UserManagement = () => {
 
     const columns = [
         {
-            header: "User",
+            header: "Pengguna",
             cell: (row) => (
                 <div className="flex items-center gap-3">
                     <img src={row.photo} alt={row.username} className="h-8 w-8 rounded-full" />
@@ -100,26 +117,26 @@ const UserManagement = () => {
             )
         },
         {
-            header: "Role",
+            header: "Peran",
             cell: (row) => {
                 const colors = { admin: 'purple', kepegawaian: 'warning', dosen: 'info' };
                 return <Badge variant={colors[row.role]}>{row.role}</Badge>
             }
         },
         {
-            header: "Department",
+            header: "Unit Kerja",
             accessorKey: "department"
         },
         {
             header: "Status",
             cell: (row) => (
                 <Badge variant={row.status ? "success" : "destructive"}>
-                    {row.status ? "Active" : "Inactive"}
+                    {row.status ? "Aktif" : "Tidak Aktif"}
                 </Badge>
             )
         },
         {
-            header: "Actions",
+            header: "Aksi",
             cell: (row) => (
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(row)}>
@@ -137,15 +154,12 @@ const UserManagement = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-                    <p className="text-gray-500">Manage system users and access roles</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Manajemen Pengguna</h1>
+                    <p className="text-gray-500">Kelola pengguna sistem dan hak akses</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline">
-                        <Download className="mr-2 h-4 w-4" /> Export
-                    </Button>
                     <Button onClick={() => { setEditingUser(null); setIsModalOpen(true); }} variant="gradient">
-                        <Plus className="mr-2 h-4 w-4" /> Add User
+                        <Plus className="mr-2 h-4 w-4" /> Tambah Pengguna
                     </Button>
                 </div>
             </div>
@@ -155,14 +169,11 @@ const UserManagement = () => {
                 <div className="flex flex-col sm:flex-row gap-4">
                     <Input
                         icon={Search}
-                        placeholder="Search users..."
-                        className="max-w-md"
+                        placeholder="Cari pengguna..."
+                        className="max-w-md w-full"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <Button variant="outline" className="sm:ml-auto">
-                        <Filter className="mr-2 h-4 w-4" /> Filter
-                    </Button>
                 </div>
 
                 <DataTable
@@ -177,11 +188,11 @@ const UserManagement = () => {
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title={editingUser ? "Edit User" : "Add New User"}
+                title={editingUser ? "Edit Pengguna" : "Tambah Pengguna Baru"}
                 footer={
                     <>
-                        <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                        <Button onClick={handleCreateOrUpdate}>{editingUser ? "Update" : "Create"}</Button>
+                        <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Batal</Button>
+                        <Button onClick={handleCreateOrUpdate}>{editingUser ? "Perbarui" : "Buat"}</Button>
                     </>
                 }
             >
@@ -196,7 +207,7 @@ const UserManagement = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Full Name</label>
+                            <label className="text-sm font-medium">Nama Lengkap</label>
                             <Input
                                 value={formData.fullName}
                                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
@@ -215,19 +226,19 @@ const UserManagement = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Password</label>
+                            <label className="text-sm font-medium">Kata Sandi</label>
                             <Input
                                 type="text"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 required={!editingUser}
-                                placeholder={editingUser ? "Blank to keep current" : "Enter password"}
+                                placeholder={editingUser ? "Kosongkan untuk tetap" : "Masukkan kata sandi"}
                             />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Role</label>
+                            <label className="text-sm font-medium">Peran</label>
                             <select
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 value={formData.role}
@@ -236,19 +247,22 @@ const UserManagement = () => {
                                 <option value="dosen">Dosen</option>
                                 <option value="kepegawaian">Kepegawaian</option>
                                 <option value="admin">Admin</option>
+                                {currentUser?.role === 'superadmin' && <option value="superadmin">Superadmin</option>}
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Department</label>
+                            <label className="text-sm font-medium">Unit Kerja</label>
                             <select
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                value={formData.department}
-                                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                value={formData.departmentId}
+                                onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                             >
-                                <option value="Teknik Informatika">Teknik Informatika</option>
-                                <option value="Sistem Informasi">Sistem Informasi</option>
-                                <option value="Teknik Elektro">Teknik Elektro</option>
-                                <option value="HRD">HRD</option>
+                                <option value="" disabled hidden>Pilih Unit Kerja</option>
+                                {departments.map(dept => (
+                                    <option key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     </div>

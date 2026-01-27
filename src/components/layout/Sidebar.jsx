@@ -36,11 +36,21 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
             { name: 'Riwayat Pegawai', icon: Users, path: '/kepegawaian/history' },
         ],
         superadmin: [
-            { name: 'Dashboard', icon: LayoutDashboard, path: '/superadmin/dashboard' },
-            { name: 'User Management', icon: Users, path: '/superadmin/users' },
-            { name: 'Departments', icon: Building, path: '/superadmin/departments' },
-            { name: 'Settings', icon: Settings, path: '/superadmin/settings' },
-            { name: 'Reports', icon: PieChart, path: '/superadmin/reports' },
+            // Superadmin gets everything + special menu
+            { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' }, // Superadmin lands on Admin Dashboard by default or specialized one
+            { name: 'User Management', icon: Users, path: '/admin/users' },
+            { name: 'Departments', icon: Building, path: '/superadmin/departments' }, // If specialized
+
+            // Kepegawaian features
+            { name: 'Persetujuan', icon: CheckSquare, path: '/kepegawaian/approvals' },
+            { name: 'SKP List', icon: FileText, path: '/kepegawaian/skp-list' },
+            { name: 'Riwayat Pegawai', icon: Users, path: '/kepegawaian/history' },
+
+            // Admin features
+            { name: 'Assign Rater', icon: Users, path: '/admin/assign' },
+
+            // Dosen features (view as user)
+            { name: 'Ajukan SKP', icon: FileText, path: '/dosen/submit' },
         ],
         admin: [
             { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },

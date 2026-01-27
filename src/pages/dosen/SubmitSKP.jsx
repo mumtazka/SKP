@@ -11,13 +11,14 @@ import Toolbar from './components/Toolbar';
 import { useSkpDraft } from '@/hooks/useSkpDraft';
 import { Button } from '@/components/common/Button';
 
-// UI Helper for the purple headers
+// ... (SectionHeader component remains the same)
 const SectionHeader = ({ title }) => (
     <div className="bg-primary text-white font-bold py-2.5 px-4 rounded-t-md shadow-sm text-sm tracking-wide uppercase mt-8 mb-0">
         {title}
     </div>
 );
 
+// ... (INITIAL_FORM_STATE remains the same)
 const INITIAL_FORM_STATE = {
     utama: [
         { id: 1, columns: ['<p>Tuliskan rencana kinerja utama anda disini...</p>'] }
@@ -36,7 +37,7 @@ const INITIAL_FORM_STATE = {
     ]
 };
 
-// Simple Confirmation Modal Component
+// ... (ConfirmationModal component remains the same)
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, isSubmitting }) => {
     if (!isOpen) return null;
 
@@ -76,7 +77,10 @@ const SubmitSKP = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [evaluator, setEvaluator] = useState(null);
-    const [activeEditor, setActiveEditor] = useState(null);
+    const [activeEditor, setActiveEditor] = useState(null); // Keep for backwards compat if needed, or focused single
+    const [selectedEditors, setSelectedEditors] = useState([]); // Array of selected Tiptap instances
+    const [activeSection, setActiveSection] = useState(null); // 'utama', 'tambahan', etc.
+
     const [portalTarget, setPortalTarget] = useState(null);
     const [feedback, setFeedback] = useState(null);
     const [existingSkpId, setExistingSkpId] = useState(null);
@@ -101,8 +105,18 @@ const SubmitSKP = () => {
         isSaving,
         lastSaved,
         clearDraft,
-        setData // Need this to load existing data
+        setData
     } = useSkpDraft(INITIAL_FORM_STATE);
+
+
+
+
+
+
+
+
+
+
 
     useEffect(() => {
         const loadExistingSkp = async () => {
@@ -154,26 +168,18 @@ const SubmitSKP = () => {
     }, [user, currentYear]); // Run once when user loads
 
     useEffect(() => {
+        // ... (evaluator fetch logic remains the same, omitted for brevity if unchanged logic inside)
+        // Re-implementing evaluator fetch to be safe as I'm replacing the whole component
         const fetchEvaluator = async () => {
             if (!user) return;
 
             try {
-                console.log("=== [SubmitSKP] FETCHING EVALUATOR DATA ===");
-                console.log(`[SubmitSKP] User ID: ${user.id}`);
-                console.log(`[SubmitSKP] User object:`, user);
-
                 // 1. Get fresh user data directly from storage/API to bypass stale session
                 const freshUser = await api.users.getById(user.id);
-                console.log("[SubmitSKP] Fresh user data:", freshUser);
-                console.log("[SubmitSKP] Fresh user raters field:", freshUser.raters);
 
                 if (freshUser.raters?.pejabatPenilaiId) {
-                    console.log(`[SubmitSKP] ✓ Found Rater ID: ${freshUser.raters.pejabatPenilaiId}`);
-
                     // 2. If assigned, fetch the rater details
-                    console.log(`[SubmitSKP] Fetching rater details for ID: ${freshUser.raters.pejabatPenilaiId}`);
                     const rater = await api.users.getById(freshUser.raters.pejabatPenilaiId);
-                    console.log("[SubmitSKP] Rater details fetched:", rater);
 
                     const evaluatorData = {
                         id: rater.id,
@@ -184,20 +190,13 @@ const SubmitSKP = () => {
                         unit: rater.departmentName || 'Universitas Negeri Yogyakarta'
                     };
 
-                    console.log("[SubmitSKP] Setting evaluator data:", evaluatorData);
                     setEvaluator(evaluatorData);
                     toast.success(`Penilai ditemukan: ${rater.fullName}`);
                 } else {
-                    console.warn("[SubmitSKP] ✗ No rater assigned!");
-                    console.warn("[SubmitSKP] Raters field is:", freshUser.raters);
-                    // Default is blank/null if not set
                     setEvaluator(null);
                     toast.warning("No rater assigned for this user.");
                 }
-
-                console.log("=== [SubmitSKP] EVALUATOR FETCH COMPLETE ===");
             } catch (error) {
-                console.error("=== [SubmitSKP] EVALUATOR FETCH ERROR ===");
                 console.error("[SubmitSKP] Error:", error);
                 setEvaluator(null);
                 toast.error(`Failed to fetch rater: ${error.message}`);
@@ -205,13 +204,7 @@ const SubmitSKP = () => {
         };
 
         fetchEvaluator();
-
-        // Add focus listener to refresh data when user switches tabs/windows
-        const onFocus = () => {
-            console.log("[SubmitSKP] Window focused, refreshing evaluator data...");
-            fetchEvaluator();
-        };
-
+        const onFocus = () => fetchEvaluator();
         window.addEventListener('focus', onFocus);
         return () => window.removeEventListener('focus', onFocus);
     }, [user]);
@@ -249,6 +242,114 @@ const SubmitSKP = () => {
         }
     };
 
+    const [selectionRange, setSelectionRange] = useState(null); // { start: {r,c}, end: {r,c} }
+
+    const handleMerge = () => {
+        if (!activeSection || !selectionRange) return;
+
+        // Function to process a single section's rows for merging
+        const processMerge = (currentRows) => {
+            const r1 = Math.min(selectionRange.start.r, selectionRange.end.r);
+            const r2 = Math.max(selectionRange.start.r, selectionRange.end.r);
+            const c1 = Math.min(selectionRange.start.c, selectionRange.end.c);
+            const c2 = Math.max(selectionRange.start.c, selectionRange.end.c);
+
+            // Calculate spans
+            const rowSpan = r2 - r1 + 1;
+            const colSpan = c2 - c1 + 1;
+
+            const newRows = [...currentRows];
+
+            // 1. Collect content from all cells to be merged
+            let mergedContent = "";
+            for (let r = r1; r <= r2; r++) {
+                if (!newRows[r]) continue;
+                for (let c = c1; c <= c2; c++) {
+                    const cellContent = newRows[r].columns[c];
+                    if (cellContent && cellContent.trim() !== "" && cellContent !== "<p></p>") {
+                        if (mergedContent.length > 0) mergedContent += " ";
+                        mergedContent += cellContent;
+                    }
+                }
+            }
+
+            // 2. Update the Top-Left cell (Master)
+            if (!newRows[r1].colSpans) newRows[r1].colSpans = [];
+            if (!newRows[r1].rowSpans) newRows[r1].rowSpans = [];
+            if (!newRows[r1].colHiddens) newRows[r1].colHiddens = [];
+
+            newRows[r1].columns[c1] = mergedContent;
+            newRows[r1].colSpans[c1] = colSpan;
+            newRows[r1].rowSpans[c1] = rowSpan;
+            newRows[r1].colHiddens[c1] = false;
+
+            // 3. Update all other cells to be hidden
+            for (let r = r1; r <= r2; r++) {
+                if (!newRows[r]) continue;
+                // Init arrays if missing
+                if (!newRows[r].colSpans) newRows[r].colSpans = [];
+                if (!newRows[r].rowSpans) newRows[r].rowSpans = [];
+                if (!newRows[r].colHiddens) newRows[r].colHiddens = [];
+
+                for (let c = c1; c <= c2; c++) {
+                    if (r === r1 && c === c1) continue; // Skip master
+
+                    newRows[r].colHiddens[c] = true;
+                    newRows[r].colSpans[c] = 1;
+                    newRows[r].rowSpans[c] = 1;
+                }
+            }
+
+            return newRows;
+        };
+
+        // Update the active section
+        updateSection(activeSection, (prevRows) => processMerge(prevRows));
+    };
+
+    const handleUnmerge = () => {
+        if (!activeSection || !selectionRange) return;
+
+        // Function to process a single section's rows for unmerging
+        const processUnmerge = (currentRows) => {
+            const r1 = Math.min(selectionRange.start.r, selectionRange.end.r);
+            const r2 = Math.max(selectionRange.start.r, selectionRange.end.r);
+            const c1 = Math.min(selectionRange.start.c, selectionRange.end.c);
+            const c2 = Math.max(selectionRange.start.c, selectionRange.end.c);
+
+            const newRows = [...currentRows];
+
+            // Process all cells in the selection range
+            for (let r = r1; r <= r2; r++) {
+                if (!newRows[r]) continue;
+
+                // Init arrays if missing
+                if (!newRows[r].colSpans) newRows[r].colSpans = [];
+                if (!newRows[r].rowSpans) newRows[r].rowSpans = [];
+                if (!newRows[r].colHiddens) newRows[r].colHiddens = [];
+
+                for (let c = c1; c <= c2; c++) {
+                    // Reset all merge properties to default (unmerged state)
+                    newRows[r].colSpans[c] = 1;
+                    newRows[r].rowSpans[c] = 1;
+                    newRows[r].colHiddens[c] = false;
+
+                    // If the cell was empty and hidden, restore it with empty content
+                    if (!newRows[r].columns[c] || newRows[r].columns[c].trim() === "") {
+                        newRows[r].columns[c] = "";
+                    }
+                }
+            }
+
+            return newRows;
+        };
+
+        // Update the active section
+        updateSection(activeSection, (prevRows) => processUnmerge(prevRows));
+    };
+
+
+
     if (!user) return null;
 
     return (
@@ -264,7 +365,12 @@ const SubmitSKP = () => {
             {portalTarget && createPortal(
                 <div className="w-full flex justify-center animate-in fade-in zoom-in duration-300">
                     <div className="max-w-2xl w-full">
-                        <Toolbar editor={activeEditor} />
+                        <Toolbar
+                            editor={activeEditor}
+                            selectedEditors={selectedEditors}
+                            onMerge={handleMerge}
+                            onUnmerge={handleUnmerge}
+                        />
                     </div>
                 </div>,
                 portalTarget
@@ -368,6 +474,14 @@ const SubmitSKP = () => {
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.utama}
                 readOnly={isReadOnly}
+                isActiveSection={activeSection === 'utama'}
+                onSectionActive={() => setActiveSection('utama')}
+                onSelectionChange={(editors, range) => {
+                    if (activeSection === 'utama') {
+                        setSelectedEditors(editors);
+                        setSelectionRange(range);
+                    }
+                }}
             />
 
             <SKPSection
@@ -377,6 +491,14 @@ const SubmitSKP = () => {
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.tambahan}
                 readOnly={isReadOnly}
+                isActiveSection={activeSection === 'tambahan'}
+                onSectionActive={() => setActiveSection('tambahan')}
+                onSelectionChange={(editors, range) => {
+                    if (activeSection === 'tambahan') {
+                        setSelectedEditors(editors);
+                        setSelectionRange(range);
+                    }
+                }}
             />
 
             {/* SECTION 2: LAMPIRAN */}
@@ -389,6 +511,14 @@ const SubmitSKP = () => {
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.dukungan}
                 readOnly={isReadOnly}
+                isActiveSection={activeSection === 'dukungan'}
+                onSectionActive={() => setActiveSection('dukungan')}
+                onSelectionChange={(editors, range) => {
+                    if (activeSection === 'dukungan') {
+                        setSelectedEditors(editors);
+                        setSelectionRange(range);
+                    }
+                }}
             />
 
             <SKPSection
@@ -398,6 +528,14 @@ const SubmitSKP = () => {
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.skema}
                 readOnly={isReadOnly}
+                isActiveSection={activeSection === 'skema'}
+                onSectionActive={() => setActiveSection('skema')}
+                onSelectionChange={(editors, range) => {
+                    if (activeSection === 'skema') {
+                        setSelectedEditors(editors);
+                        setSelectionRange(range);
+                    }
+                }}
             />
 
             <SKPSection
@@ -407,6 +545,14 @@ const SubmitSKP = () => {
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.konsekuensi}
                 readOnly={isReadOnly}
+                isActiveSection={activeSection === 'konsekuensi'}
+                onSectionActive={() => setActiveSection('konsekuensi')}
+                onSelectionChange={(editors, range) => {
+                    if (activeSection === 'konsekuensi') {
+                        setSelectedEditors(editors);
+                        setSelectionRange(range);
+                    }
+                }}
             />
 
             {/* Floating Submit Button - Only show when not read-only */}
@@ -425,6 +571,5 @@ const SubmitSKP = () => {
         </div>
     );
 };
-
 
 export default SubmitSKP;

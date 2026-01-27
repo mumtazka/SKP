@@ -53,6 +53,11 @@ const transformSkp = (skp) => {
         score: skp.score,
         details: skp.details,
         feedback: skp.feedback,
+        realisasi: skp.realisasi,
+        realisasiStatus: skp.realisasi_status,
+        realisasiSubmittedAt: skp.realisasi_submitted_at,
+        realisasiReviewedAt: skp.realisasi_reviewed_at,
+        realisasiReviewerId: skp.realisasi_reviewer_id,
         createdAt: skp.created_at,
         updatedAt: skp.updated_at,
         approvedAt: skp.approved_at,
@@ -443,6 +448,28 @@ export const api = {
             return data.map(transformSkp);
         },
 
+        getById: async (id) => {
+            const { data, error } = await supabase
+                .from('skps')
+                .select(`
+                    *,
+                    user:users!skps_user_id_fkey(
+                        id, full_name, email, role, identity_number, jabatan, pangkat,
+                        department:departments(id, name, code),
+                        study_program:study_programs(id, name, code)
+                    ),
+                    evaluator:users!skps_evaluator_id_fkey(
+                        id, full_name, identity_number, jabatan, pangkat,
+                        department:departments(id, name, code)
+                    )
+                `)
+                .eq('id', id)
+                .single();
+
+            if (error) throw error;
+            return transformSkp(data);
+        },
+
         create: async (skpData) => {
             const { data, error } = await supabase
                 .from('skps')
@@ -506,6 +533,13 @@ export const api = {
             if (updates.evaluatorId !== undefined) updateData.evaluator_id = updates.evaluatorId;
             if (updates.status === 'Approved') updateData.approved_at = new Date().toISOString();
             if (updates.score !== undefined) updateData.evaluated_at = new Date().toISOString();
+
+            // Realisasi fields
+            if (updates.realisasi !== undefined) updateData.realisasi = updates.realisasi;
+            if (updates.realisasiStatus !== undefined) updateData.realisasi_status = updates.realisasiStatus;
+            if (updates.realisasiSubmittedAt !== undefined) updateData.realisasi_submitted_at = updates.realisasiSubmittedAt;
+            if (updates.realisasiReviewedAt !== undefined) updateData.realisasi_reviewed_at = updates.realisasiReviewedAt;
+            if (updates.realisasiReviewerId !== undefined) updateData.realisasi_reviewer_id = updates.realisasiReviewerId;
 
             const { data, error } = await supabase
                 .from('skps')

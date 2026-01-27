@@ -17,12 +17,15 @@ import Settings from '@/pages/Settings';
 // Dosen Pages
 import DosenDashboard from '@/pages/dosen/DosenDashboard';
 import SubmitSKP from '@/pages/dosen/SubmitSKP';
+import RealisasiSKP from '@/pages/dosen/RealisasiSKP';
 
 // Kepegawaian Pages
 import KepegawaianDashboard from '@/pages/kepegawaian/KepegawaianDashboard';
 import Approval from '@/pages/kepegawaian/Approval';
 import ReviewSKP from '@/pages/kepegawaian/ReviewSKP';
 import ApprovedSKPList from '@/pages/kepegawaian/ApprovedSKPList';
+import Evaluations from '@/pages/kepegawaian/Evaluations';
+import ReviewRealisasi from '@/pages/kepegawaian/ReviewRealisasi';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -70,6 +73,7 @@ function App() {
                             <Route path="dashboard" element={<DosenDashboard />} />
                             <Route path="submit" element={<SubmitSKP />} />
                             <Route path="skp/submit" element={<SubmitSKP />} />
+                            <Route path="realisasi" element={<RealisasiSKP />} />
                             <Route path="history" element={<ComingSoon title="Riwayat SKP" />} />
                         </Route>
 
@@ -79,7 +83,8 @@ function App() {
                             <Route path="approvals" element={<Approval />} />
                             <Route path="approval/:id" element={<ReviewSKP />} />
                             <Route path="skp-list" element={<ApprovedSKPList />} />
-                            <Route path="evaluations" element={<ComingSoon title="Evaluasi Kinerja" />} />
+                            <Route path="evaluations" element={<Evaluations />} />
+                            <Route path="review-realisasi/:id" element={<ReviewRealisasi />} />
                             <Route path="history" element={<ComingSoon title="Riwayat Pegawai" />} />
                         </Route>
 

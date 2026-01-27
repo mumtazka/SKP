@@ -26,6 +26,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         dosen: [
             { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
             { name: 'Ajukan SKP', icon: FileText, path: '/dosen/submit' },
+            { name: 'Evaluasi Akhir', icon: ClipboardList, path: '/dosen/realisasi' },
             { name: 'Riwayat', icon: History, path: '/dosen/history' },
         ],
         kepegawaian: [

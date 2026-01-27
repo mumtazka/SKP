@@ -450,7 +450,7 @@ const SubmitSKP = () => {
                     <div>
                         <h3 className="font-semibold text-amber-900 text-lg">Perlu Revisi</h3>
                         <p className="text-amber-800 mt-2 p-3 bg-white/50 rounded-lg border border-amber-100 italic">
-                            "{feedback}"
+                            "{feedback?.global || (typeof feedback === 'string' ? feedback : '')}"
                         </p>
                         <p className="text-amber-700 mt-3 text-sm font-medium">
                             Silakan perbaiki poin-poin di atas dan ajukan kembali.

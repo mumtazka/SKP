@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Plus, Trash2, Columns, MessageSquare, MoreVertical, X, Grid3X3, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Columns, MessageSquare, MoreVertical, X, Grid3X3, GripVertical, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 
 // Border style options for individual rows

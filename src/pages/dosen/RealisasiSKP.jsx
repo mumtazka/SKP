@@ -1,8 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import { Button } from '@/components/common/Button';
 import { toast } from 'sonner';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import Placeholder from '@tiptap/extension-placeholder';
+import Toolbar from './components/Toolbar'; // Reuse existing toolbar
 import {
     FileText,
     CheckCircle,
@@ -13,6 +20,69 @@ import {
     MessageSquare
 } from 'lucide-react';
 
+// Internal SimpleEditor component (to avoid new file)
+// Note: Created here as user requested "Dont make new file"
+const SimpleEditor = ({
+    content,
+    onUpdate,
+    onFocus,
+    readOnly = false,
+    placeholder = 'Tuliskan realisasi...',
+    className = ''
+}) => {
+    const onUpdateRef = useRef(onUpdate);
+    const onFocusRef = useRef(onFocus);
+
+    useEffect(() => {
+        onUpdateRef.current = onUpdate;
+        onFocusRef.current = onFocus;
+    }, [onUpdate, onFocus]);
+
+    const editor = useEditor({
+        extensions: [
+            StarterKit,
+            Underline,
+            TextAlign.configure({ types: ['heading', 'paragraph'] }),
+            Placeholder.configure({ placeholder }),
+        ],
+        content: content,
+        editable: !readOnly,
+        onUpdate: ({ editor }) => {
+            if (!readOnly && onUpdateRef.current) {
+                onUpdateRef.current(editor.getHTML());
+            }
+        },
+        onFocus: ({ editor }) => {
+            if (!readOnly && onFocusRef.current) {
+                onFocusRef.current(editor);
+            }
+        },
+        editorProps: {
+            attributes: {
+                class: `prose prose-sm prose-blue max-w-none outline-none text-sm w-full h-full min-h-[80px] p-3 ${className}`,
+            },
+        },
+    }, []);
+
+    useEffect(() => {
+        if (editor && content !== editor.getHTML()) {
+            if (editor.isEmpty && content) {
+                editor.commands.setContent(content);
+            }
+        }
+    }, [content, editor]);
+
+    useEffect(() => {
+        if (editor) {
+            editor.setEditable(!readOnly);
+        }
+    }, [readOnly, editor]);
+
+    return (
+        <EditorContent editor={editor} className="w-full h-full" />
+    );
+};
+
 const RealisasiSKP = () => {
     const { user } = useAuth();
     const [approvedSkps, setApprovedSkps] = useState([]);
@@ -21,6 +91,29 @@ const RealisasiSKP = () => {
     const [realisasiData, setRealisasiData] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Editor State for Toolbar
+    const [activeEditor, setActiveEditor] = useState(null);
+    const [portalTarget, setPortalTarget] = useState(null);
+
+    useEffect(() => {
+        // Retry finding the portal target in case of race conditions
+        const findTarget = () => {
+            const target = document.getElementById('navbar-action-area');
+            if (target) {
+                setPortalTarget(target);
+                return true;
+            }
+            return false;
+        };
+
+        if (!findTarget()) {
+            const interval = setInterval(() => {
+                if (findTarget()) clearInterval(interval);
+            }, 100);
+            return () => clearInterval(interval);
+        }
+    }, []);
 
     useEffect(() => {
         loadApprovedSkps();
@@ -207,11 +300,11 @@ const RealisasiSKP = () => {
                                         {/* Realization */}
                                         <td className="border-r border-blue-200 p-0 align-top">
                                             {isEditable ? (
-                                                <textarea
-                                                    value={realisasiRow.realisasi || ''}
-                                                    onChange={(e) => handleRealisasiChange(sectionKey, index, e.target.value)}
+                                                <SimpleEditor
+                                                    content={realisasiRow.realisasi || ''}
+                                                    onUpdate={(html) => handleRealisasiChange(sectionKey, index, html)}
+                                                    onFocus={(editor) => setActiveEditor(editor)}
                                                     placeholder="Tuliskan realisasi..."
-                                                    className="w-full h-full min-h-[80px] p-3 border-0 focus:ring-2 focus:ring-primary/20 outline-none text-sm resize-none bg-transparent"
                                                 />
                                             ) : (
                                                 <div className="p-3 text-sm text-gray-700 min-h-[80px] bg-gray-50">
@@ -304,6 +397,19 @@ const RealisasiSKP = () => {
                             </option>
                         ))}
                     </select>
+                </div>
+            )}
+
+            {/* STICKY TOOLBAR (Safety Fallback) */}
+            {selectedSkp && (!selectedSkp.realisasiStatus || !['Pending', 'Reviewed'].includes(selectedSkp.realisasiStatus)) && (
+                <div className="sticky top-16 z-40 bg-white/95 backdrop-blur shadow-md border border-blue-200 rounded-lg p-1.5 mb-4 mx-1 animate-in fade-in slide-in-from-top-4">
+                    <Toolbar
+                        editor={activeEditor}
+                        onUndo={() => activeEditor?.chain().focus().undo().run()}
+                        onRedo={() => activeEditor?.chain().focus().redo().run()}
+                        canUndo={activeEditor?.can().undo()}
+                        canRedo={activeEditor?.can().redo()}
+                    />
                 </div>
             )}
 

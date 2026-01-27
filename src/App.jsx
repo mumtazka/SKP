@@ -21,6 +21,8 @@ import SubmitSKP from '@/pages/dosen/SubmitSKP';
 // Kepegawaian Pages
 import KepegawaianDashboard from '@/pages/kepegawaian/KepegawaianDashboard';
 import Approval from '@/pages/kepegawaian/Approval';
+import ReviewSKP from '@/pages/kepegawaian/ReviewSKP';
+import ApprovedSKPList from '@/pages/kepegawaian/ApprovedSKPList';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -75,6 +77,8 @@ function App() {
                         <Route path="kepegawaian">
                             <Route path="dashboard" element={<KepegawaianDashboard />} />
                             <Route path="approvals" element={<Approval />} />
+                            <Route path="approval/:id" element={<ReviewSKP />} />
+                            <Route path="skp-list" element={<ApprovedSKPList />} />
                             <Route path="evaluations" element={<ComingSoon title="Evaluasi Kinerja" />} />
                             <Route path="history" element={<ComingSoon title="Riwayat Pegawai" />} />
                         </Route>

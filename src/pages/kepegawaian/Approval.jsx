@@ -5,8 +5,10 @@ import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { Check, X, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const Approval = () => {
+    const navigate = useNavigate();
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -44,42 +46,42 @@ const Approval = () => {
 
     const columns = [
         {
-            header: "Activity",
+            header: "User",
             cell: (row) => (
-                <div>
-                    <div className="font-medium text-gray-900">{row.activity}</div>
-                    <div className="text-xs text-gray-500">{row.category} ({row.year})</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Submitted: {new Date(row.createdAt).toLocaleDateString()}</div>
+                <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-primary">
+                        {row.user?.fullName?.charAt(0) || 'U'}
+                    </div>
+                    <div>
+                        <div className="font-medium text-gray-900">{row.user?.fullName}</div>
+                        <div className="text-xs text-gray-500">{row.user?.identityNumber}</div>
+                    </div>
                 </div>
             )
         },
         {
-            header: "Priority",
-            cell: () => <Badge variant="warning">Normal</Badge> // Mock priority
+            header: "Submission",
+            cell: (row) => (
+                <div>
+                    <div className="font-medium text-gray-900">Periode {row.year}</div>
+                    <div className="text-xs text-gray-500">Submitted: {new Date(row.createdAt).toLocaleDateString()}</div>
+                </div>
+            )
+        },
+        {
+            header: "Status",
+            cell: () => <Badge variant="warning">Pending Review</Badge>
         },
         {
             header: "Actions",
             cell: (row) => (
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm">
-                        <FileText size={16} className="text-gray-500" />
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="bg-green-100 text-green-700 hover:bg-green-200"
-                        onClick={() => handleAction(row.id, 'approve')}
-                    >
-                        <Check size={16} className="mr-1" /> Approve
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-500 hover:bg-red-50"
-                        onClick={() => handleAction(row.id, 'reject')}
-                    >
-                        <X size={16} />
-                    </Button>
-                </div>
+                <Button
+                    size="sm"
+                    variant="gradient"
+                    onClick={() => navigate(`/kepegawaian/approval/${row.id}`)}
+                >
+                    Review
+                </Button>
             )
         }
     ];

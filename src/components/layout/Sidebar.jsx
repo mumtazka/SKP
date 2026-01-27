@@ -31,6 +31,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         kepegawaian: [
             { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
             { name: 'Persetujuan', icon: CheckSquare, path: '/kepegawaian/approvals' },
+            { name: 'SKP', icon: FileText, path: '/kepegawaian/skp-list' },
             { name: 'Penilaian', icon: ClipboardList, path: '/kepegawaian/evaluations' },
             { name: 'Riwayat Pegawai', icon: Users, path: '/kepegawaian/history' },
         ],

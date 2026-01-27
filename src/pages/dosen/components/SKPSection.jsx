@@ -103,23 +103,28 @@ const EditorCell = ({
     }, [readOnly, editor]);
 
     const borderClass = BORDER_STYLES[borderStyle]?.class || 'border';
+    const isMerged = colSpan > 1 || rowSpan > 1;
 
     return (
         <td
             colSpan={colSpan}
             rowSpan={rowSpan}
             className={`
-                ${borderClass} border-r border-purple-200 last:border-r-0 relative transition-colors p-0 align-top
-                ${isSelected ? 'bg-purple-100 ring-2 ring-inset ring-purple-300 z-10' : 'bg-white hover:bg-purple-50/30'}
+                ${borderClass} border-purple-200 relative transition-colors p-0 align-top
+                ${isMerged ? 'bg-white z-20' : 'border-r last:border-r-0'} 
+                ${isSelected ? 'bg-purple-100 ring-2 ring-inset ring-purple-300 z-30' : 'bg-white hover:bg-purple-50/30'}
+                ${isMerged && !isSelected ? 'hover:bg-white' : ''}
             `}
             onMouseDown={(e) => !readOnly && onMouseDown && onMouseDown(rowIndex, colIndex, e)}
             onMouseEnter={() => !readOnly && onMouseEnter && onMouseEnter(rowIndex, colIndex)}
         >
-            <EditorContent
-                editor={editor}
-                className={`prose prose-sm prose-purple max-w-none p-2.5 min-h-[45px] outline-none text-sm w-full h-full ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
-                style={{ lineHeight: '1.4' }}
-            />
+            <div className="h-full w-full relative">
+                <EditorContent
+                    editor={editor}
+                    className={`prose prose-sm prose-purple max-w-none p-2.5 min-h-[45px] outline-none text-sm w-full h-full ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
+                    style={{ lineHeight: '1.4' }}
+                />
+            </div>
         </td>
     );
 };
@@ -166,9 +171,10 @@ const RowContextMenu = ({ isOpen, onClose, onSetBorder, currentBorder, onDelete,
 const RowItem = ({
     columns = [],
     colSpans = [],
-    rowSpans = [], // NEW
-    colHiddens = [], // NEW: To handling merged cells (hidden)
-    displayNumber,
+    rowSpans = [],
+    colHiddens = [],
+    rowNumber = '', // NEW: Manual Number
+    onUpdateNumber, // NEW: Handler
     onUpdate,
     onFocus,
     onDelete,
@@ -187,7 +193,7 @@ const RowItem = ({
 }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-    const isEven = displayNumber % 2 === 0;
+    const isEven = (rowIndex + 1) % 2 === 0; // Use rowIndex for striping
     const borderClass = BORDER_STYLES[borderStyle]?.class || 'border';
     const menuButtonRef = useRef(null);
 
@@ -204,20 +210,18 @@ const RowItem = ({
 
     return (
         <tr className={`${borderClass} border-b border-purple-200 last:border-b-0 group transition-all ${isEven ? 'bg-white' : 'bg-purple-50/30'}`}>
-            {/* Number Column */}
+            {/* Number Column - MANUAL INPUT */}
             {showNumbers && (
-                <td className={`w-10 ${borderClass} border-r border-purple-200 text-sm font-bold align-middle bg-purple-100 text-primary relative group/number p-0`}>
+                <td className={`w-10 ${borderClass} border-r border-purple-200 text-sm font-bold align-middle bg-purple-100 text-primary p-0`}>
                     <div className="w-10 min-h-[45px] flex items-center justify-center relative">
-                        <span className="group-hover/number:opacity-0 transition-opacity">{displayNumber}</span>
-                        {!readOnly && (
-                            <button
-                                onClick={onDelete}
-                                className="absolute inset-0 w-full h-full flex items-center justify-center bg-red-100 text-red-600 opacity-0 group-hover/number:opacity-100 transition-opacity hover:bg-red-200 hover:text-red-700"
-                                title="Hapus Baris"
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
+                        <input
+                            type="text"
+                            value={rowNumber}
+                            onChange={(e) => onUpdateNumber && onUpdateNumber(e.target.value)}
+                            readOnly={readOnly}
+                            className="w-full h-full bg-transparent text-center font-bold text-primary outline-none p-1"
+                            placeholder=""
+                        />
                     </div>
                 </td>
             )}
@@ -231,7 +235,7 @@ const RowItem = ({
                     content={colContent}
                     colSpan={colSpans[colIndex] || 1}
                     rowSpan={rowSpans[colIndex] || 1}
-                    isHidden={colHiddens[colIndex]}
+                    isHidden={colHiddens.includes(colIndex)}
                     onUpdate={(newHtml) => {
                         const newCols = [...columns];
                         newCols[colIndex] = newHtml;
@@ -277,6 +281,9 @@ const RowItem = ({
     );
 };
 
+
+
+
 const SKPSection = ({
     title,
     rows = [],
@@ -290,7 +297,7 @@ const SKPSection = ({
 }) => {
     const [colCount, setColCount] = useState(1);
     const [colWidths, setColWidths] = useState(['100%']);
-    const [showNumbers, setShowNumbers] = useState(true);
+    const showNumbers = true; // Fixed column
 
     // ... editorsRef and other hooks same as before ...
     const editorsRef = useRef({});
@@ -489,10 +496,14 @@ const SKPSection = ({
         const newRow = {
             id: Date.now(),
             columns: Array(colCount).fill(''),
-            borderStyle: 'bold'
+            borderStyle: 'bold',
+            number: '' // NEW: Init manual number
         };
         onChange([...rows, newRow]);
     };
+
+
+
 
     const handleAddColumn = () => {
         if (readOnly) return;
@@ -568,15 +579,6 @@ const SKPSection = ({
 
                 {!readOnly && (
                     <div className="flex gap-1.5 items-center">
-                        <button
-                            onClick={() => setShowNumbers(!showNumbers)}
-                            className={`h-7 px-2 flex items-center gap-1 rounded text-xs font-medium transition-colors ${showNumbers ? 'bg-primary text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
-                            title={showNumbers ? 'Sembunyikan Nomor' : 'Tampilkan Nomor'}
-                        >
-                            <Grid3X3 size={12} />
-                            No
-                        </button>
-
                         <Button
                             size="sm"
                             className="h-7 px-2.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-sm flex items-center"
@@ -641,7 +643,14 @@ const SKPSection = ({
                             <RowItem
                                 key={row.id}
                                 rowIndex={index}
-                                displayNumber={index + 1}
+                                // displayNumber={index + 1} // REMOVED
+                                rowNumber={row.number || ''} // NEW
+                                onUpdateNumber={(val) => {
+                                    if (readOnly) return;
+                                    const next = [...rows];
+                                    next[index] = { ...next[index], number: val };
+                                    onChange(next, true); // Treat as text update for debounce
+                                }}
                                 columns={row.columns || []}
                                 colSpans={row.colSpans || []}
                                 rowSpans={row.rowSpans || []} // Pass rowSpans
@@ -650,7 +659,7 @@ const SKPSection = ({
                                     if (readOnly) return;
                                     const next = [...rows];
                                     next[index] = { ...next[index], columns: newCols };
-                                    onChange(next);
+                                    onChange(next, true); // True = isTextUpdate
                                 }}
                                 onFocus={onEditorFocus}
                                 onDelete={() => handleDeleteRow(index)}

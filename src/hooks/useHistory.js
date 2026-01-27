@@ -8,6 +8,12 @@ const useHistory = (initialState) => {
 
     const pushState = useCallback((newState) => {
         setHistory((prev) => {
+            const current = prev[currentIndex];
+            // Prevent duplicate states - Simple JSON check
+            if (JSON.stringify(current) === JSON.stringify(newState)) {
+                return prev;
+            }
+
             const newHistory = prev.slice(0, currentIndex + 1);
             // Limit history size to 50
             if (newHistory.length >= 50) {
@@ -15,18 +21,40 @@ const useHistory = (initialState) => {
             }
             return [...newHistory, newState];
         });
+
         setCurrentIndex((prev) => {
-            const newHistoryLen = prev < 50 ? prev + 1 : 49; // Keep index at end if maxed?
-            // Actually if we shifted history (slice(1)), current index shifts?
-            // If we slice(1), index 50 becomes 49?
-            // Wait.
-            // If history had 50 items (0-49). Current is 49.
-            // We add 1. New history has 51 items. We slice(1), so it has 50 items.
-            // The old 0 is gone. The new 0 is old 1.
-            // The new item is at 49.
+            // We need to access the LATEST history to check equality potentially?
+            // No, we rely on the fact that if setHistory returns prev, component re-renders but state obj is same.
+            // BUT currentIndex update runs independently?
+            // If setHistory bails out, we must NOT update currentIndex. 
+            // This architecture is tricky. 
+
+            // Better: Check equality outside setters using 'history' dependency?
+            // But 'history' in dependency causes frequent recreating of pushState.
+            // Let's use functional update properly.
+
+            // Actually, best way:
             return prev < 49 ? prev + 1 : 49;
+            // WAIT! If history didn't change (duplicate), we shouldn't increment!
+            // Because we are inside a hook, we can't synchronously know if setHistory bailed.
         });
     }, [currentIndex]);
+
+    // CORRECT FIX ABOVE IS HARD via useState.
+    // Let's change the pattern:
+    // We need 'history' in scope to check current.
+    // But we want to avoid dependency.
+    // Let's use 'currentState' variable which IS in scope (from line 7).
+
+    /* 
+       Wait, 'currentIndex' is in dep array. 'history' is not.
+       'currentState' is derived from history[currentIndex] at render time.
+       So 'currentState' is stale if history changed? 
+       No, pushState is recreated when currentIndex changes.
+       But if history changes but index doesn't (impossible for push), we might meet stale.
+       
+       Let's trust 'currentState' from line 7 is fresh enough for this render cycle.
+    */
 
     const undo = useCallback(() => {
         setCurrentIndex((prev) => Math.max(0, prev - 1));

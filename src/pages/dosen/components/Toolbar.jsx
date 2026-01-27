@@ -66,6 +66,19 @@ const Toolbar = ({ editor, selectedEditors = [], onMerge, onUnmerge, onUndo, onR
 
     return (
         <div className="flex items-center gap-1 w-full relative">
+            <ToolbarButton
+                onClick={onUndo}
+                disabled={!canUndo}
+                icon={Undo2}
+                isActive={false}
+            />
+            <ToolbarButton
+                onClick={onRedo}
+                disabled={!canRedo}
+                icon={Redo2}
+                isActive={false}
+            />
+            <div className="w-px h-6 bg-gray-200 mx-2" />
 
             <ToolbarButton
                 onClick={() => runCommand(chain => chain.toggleBold())}
@@ -151,7 +164,7 @@ const Toolbar = ({ editor, selectedEditors = [], onMerge, onUnmerge, onUndo, onR
                     </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 };
 

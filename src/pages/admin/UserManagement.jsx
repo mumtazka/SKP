@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import { DataTable } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
@@ -9,6 +10,7 @@ import { Plus, Search, Edit2, Trash2, Filter, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 const UserManagement = () => {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,7 +24,11 @@ const UserManagement = () => {
         setLoading(true);
         try {
             const data = await api.users.getAll();
-            setUsers(data);
+            // Filter: If current user is 'admin', hide 'superadmin' users
+            const filteredData = currentUser?.role === 'admin'
+                ? data.filter(u => u.role !== 'superadmin')
+                : data;
+            setUsers(filteredData);
         } catch (err) {
             toast.error("Failed to fetch users");
         } finally {
@@ -236,6 +242,7 @@ const UserManagement = () => {
                                 <option value="dosen">Dosen</option>
                                 <option value="kepegawaian">Kepegawaian</option>
                                 <option value="admin">Admin</option>
+                                {currentUser?.role === 'superadmin' && <option value="superadmin">Superadmin</option>}
                             </select>
                         </div>
                         <div className="space-y-2">

@@ -78,7 +78,7 @@ const Approval = () => {
                 <Button
                     size="sm"
                     variant="gradient"
-                    onClick={() => navigate(`/kepegawaian/approval/${row.id}`)}
+                    onClick={() => navigate(`/kepegawaian/approval/${row.id}`, { state: { returnTo: '/kepegawaian/approvals' } })}
                 >
                     Review
                 </Button>

@@ -339,10 +339,21 @@ const KepegawaianDashboard = () => {
                                 )}
 
                                 {selectedSkp.status === 'Approved' && (
-                                    <span className="px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg flex items-center gap-2">
-                                        <CheckCircle size={16} />
-                                        Sudah Disetujui
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleReject}
+                                            disabled={processingId === selectedSkp.id}
+                                            className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2 border border-red-200"
+                                            title="Batalkan persetujuan dan tolak"
+                                        >
+                                            <AlertCircle size={16} />
+                                            Batalkan & Tolak
+                                        </button>
+                                        <span className="px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg flex items-center gap-2">
+                                            <CheckCircle size={16} />
+                                            Sudah Disetujui
+                                        </span>
+                                    </div>
                                 )}
 
                                 {selectedSkp.status === 'Rejected' && (
@@ -394,8 +405,8 @@ const KepegawaianDashboard = () => {
                         <button
                             onClick={() => setActiveTab('pending')}
                             className={`text-sm font-medium pb-2 border-b-2 transition-colors ${activeTab === 'pending'
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             Antrian Persetujuan
@@ -408,8 +419,8 @@ const KepegawaianDashboard = () => {
                         <button
                             onClick={() => setActiveTab('all')}
                             className={`text-sm font-medium pb-2 border-b-2 transition-colors ${activeTab === 'all'
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             Semua SKP

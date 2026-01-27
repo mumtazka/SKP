@@ -17,9 +17,7 @@ import {
     Shield,
     Home,
     IdCard,
-    Edit2,
     Save,
-    X,
     Camera
 } from 'lucide-react';
 
@@ -27,9 +25,10 @@ const Profile = () => {
     const { user } = useAuth();
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [showPhotoInput, setShowPhotoInput] = useState(false);
     const [editForm, setEditForm] = useState({
+        photo: '',
         email: '',
         phoneNumber: '',
         address: ''
@@ -46,6 +45,7 @@ const Profile = () => {
             const data = await api.users.getById(user.id);
             setProfileData(data);
             setEditForm({
+                photo: data.photo || '',
                 email: data.email || '',
                 phoneNumber: data.phoneNumber || '',
                 address: data.address || ''
@@ -55,6 +55,7 @@ const Profile = () => {
             // Fallback to user data from context
             setProfileData(user);
             setEditForm({
+                photo: user.photo || '',
                 email: user.email || '',
                 phoneNumber: user.phoneNumber || '',
                 address: user.address || ''
@@ -69,7 +70,6 @@ const Profile = () => {
         try {
             await api.auth.updateProfile(user.id, editForm);
             toast.success('Profile updated successfully');
-            setEditing(false);
             loadProfile();
         } catch (error) {
             toast.error('Failed to update profile');
@@ -124,43 +124,15 @@ const Profile = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
                     <p className="text-gray-500 mt-1">Manage your account information</p>
                 </div>
-                {!editing ? (
-                    <Button
-                        variant="outline"
-                        onClick={() => setEditing(true)}
-                        className="flex items-center gap-2"
-                    >
-                        <Edit2 size={16} />
-                        Edit Profile
-                    </Button>
-                ) : (
-                    <div className="flex gap-2">
-                        <Button
-                            variant="ghost"
-                            onClick={() => {
-                                setEditing(false);
-                                setEditForm({
-                                    email: data.email || '',
-                                    phoneNumber: data.phoneNumber || '',
-                                    address: data.address || ''
-                                });
-                            }}
-                            className="flex items-center gap-2"
-                        >
-                            <X size={16} />
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="gradient"
-                            onClick={handleSave}
-                            isLoading={saving}
-                            className="flex items-center gap-2"
-                        >
-                            <Save size={16} />
-                            Save Changes
-                        </Button>
-                    </div>
-                )}
+                <Button
+                    variant="gradient"
+                    onClick={handleSave}
+                    isLoading={saving}
+                    className="flex items-center gap-2"
+                >
+                    <Save size={16} />
+                    Save Changes
+                </Button>
             </div>
 
             {/* Profile Card */}
@@ -176,12 +148,29 @@ const Profile = () => {
                     <div className="relative -mt-16 mb-4">
                         <div className="relative inline-block">
                             <img
-                                src={data.photo}
+                                src={editForm.photo || data.photo}
                                 alt={data.fullName}
                                 className="h-32 w-32 rounded-2xl border-4 border-white shadow-lg object-cover bg-gray-100"
                             />
-                            <button className="absolute bottom-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors">
-                                <Camera size={16} className="text-gray-600" />
+                            <div className="absolute top-full left-0 right-0 mt-2 z-10">
+                                {showPhotoInput && (
+                                    <div className="bg-white p-2 rounded-lg shadow-xl border border-gray-100 animate-in fade-in zoom-in duration-200">
+                                        <Input
+                                            value={editForm.photo}
+                                            onChange={(e) => setEditForm({ ...editForm, photo: e.target.value })}
+                                            placeholder="Image URL..."
+                                            className="text-xs"
+                                            autoFocus
+                                        />
+                                        <p className="text-[10px] text-gray-400 mt-1 px-1">We support public image URLs</p>
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setShowPhotoInput(!showPhotoInput)}
+                                className={`absolute bottom-2 right-2 p-2 rounded-full shadow-md transition-colors ${showPhotoInput ? 'bg-primary text-white' : 'bg-white hover:bg-gray-50 text-gray-600'}`}
+                            >
+                                <Camera size={16} />
                             </button>
                         </div>
                     </div>
@@ -226,16 +215,12 @@ const Profile = () => {
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm text-gray-500">Email</p>
-                                    {editing ? (
-                                        <Input
-                                            value={editForm.email}
-                                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                            placeholder="Enter email"
-                                            className="mt-1"
-                                        />
-                                    ) : (
-                                        <p className="font-medium text-gray-900">{data.email}</p>
-                                    )}
+                                    <Input
+                                        value={editForm.email}
+                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                        placeholder="Enter email"
+                                        className="mt-1"
+                                    />
                                 </div>
                             </div>
 
@@ -246,16 +231,12 @@ const Profile = () => {
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm text-gray-500">Phone Number</p>
-                                    {editing ? (
-                                        <Input
-                                            value={editForm.phoneNumber}
-                                            onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
-                                            placeholder="Enter phone number"
-                                            className="mt-1"
-                                        />
-                                    ) : (
-                                        <p className="font-medium text-gray-900">{data.phoneNumber || '-'}</p>
-                                    )}
+                                    <Input
+                                        value={editForm.phoneNumber}
+                                        onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                                        placeholder="Enter phone number"
+                                        className="mt-1"
+                                    />
                                 </div>
                             </div>
 
@@ -266,17 +247,13 @@ const Profile = () => {
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm text-gray-500">Address</p>
-                                    {editing ? (
-                                        <textarea
-                                            value={editForm.address}
-                                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                                            placeholder="Enter address"
-                                            rows={2}
-                                            className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
-                                        />
-                                    ) : (
-                                        <p className="font-medium text-gray-900">{data.address || '-'}</p>
-                                    )}
+                                    <textarea
+                                        value={editForm.address}
+                                        onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                                        placeholder="Enter address"
+                                        rows={2}
+                                        className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -341,8 +318,8 @@ const Profile = () => {
                                 <div>
                                     <p className="text-sm text-gray-500">Account Status</p>
                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${data.status
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-red-100 text-red-700'
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-red-100 text-red-700'
                                         }`}>
                                         {data.status ? 'Active' : 'Inactive'}
                                     </span>

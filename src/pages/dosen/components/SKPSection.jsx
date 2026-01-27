@@ -41,6 +41,15 @@ const EditorCell = ({
     // If hidden (covered by another merged cell), don't render td
     if (isHidden) return null;
 
+    // Use refs for callbacks to avoid re-initializing editor when callbacks change
+    const onUpdateRef = useRef(onUpdate);
+    const onFocusRef = useRef(onFocus);
+
+    useEffect(() => {
+        onUpdateRef.current = onUpdate;
+        onFocusRef.current = onFocus;
+    }, [onUpdate, onFocus]);
+
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -50,10 +59,14 @@ const EditorCell = ({
         ],
         content: content,
         editable: !readOnly,
-        onUpdate: ({ editor }) => !readOnly && onUpdate(editor.getHTML()),
+        onUpdate: ({ editor }) => {
+            if (!readOnly && onUpdateRef.current) {
+                onUpdateRef.current(editor.getHTML());
+            }
+        },
         onFocus: ({ editor }) => {
-            if (!readOnly) {
-                onFocus(editor);
+            if (!readOnly && onFocusRef.current) {
+                onFocusRef.current(editor);
             }
         },
         editorProps: {
@@ -64,7 +77,7 @@ const EditorCell = ({
                 return false;
             }
         }
-    });
+    }, []); // Dependency array to prevent re-initialization on every render
 
     useEffect(() => {
         if (editor && onRegister) {

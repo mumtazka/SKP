@@ -108,6 +108,16 @@ const SubmitSKP = () => {
         setData
     } = useSkpDraft(INITIAL_FORM_STATE);
 
+
+
+
+
+
+
+
+
+
+
     useEffect(() => {
         const loadExistingSkp = async () => {
             if (!user) return;
@@ -297,6 +307,47 @@ const SubmitSKP = () => {
         updateSection(activeSection, (prevRows) => processMerge(prevRows));
     };
 
+    const handleUnmerge = () => {
+        if (!activeSection || !selectionRange) return;
+
+        // Function to process a single section's rows for unmerging
+        const processUnmerge = (currentRows) => {
+            const r1 = Math.min(selectionRange.start.r, selectionRange.end.r);
+            const r2 = Math.max(selectionRange.start.r, selectionRange.end.r);
+            const c1 = Math.min(selectionRange.start.c, selectionRange.end.c);
+            const c2 = Math.max(selectionRange.start.c, selectionRange.end.c);
+
+            const newRows = [...currentRows];
+
+            // Process all cells in the selection range
+            for (let r = r1; r <= r2; r++) {
+                if (!newRows[r]) continue;
+
+                // Init arrays if missing
+                if (!newRows[r].colSpans) newRows[r].colSpans = [];
+                if (!newRows[r].rowSpans) newRows[r].rowSpans = [];
+                if (!newRows[r].colHiddens) newRows[r].colHiddens = [];
+
+                for (let c = c1; c <= c2; c++) {
+                    // Reset all merge properties to default (unmerged state)
+                    newRows[r].colSpans[c] = 1;
+                    newRows[r].rowSpans[c] = 1;
+                    newRows[r].colHiddens[c] = false;
+
+                    // If the cell was empty and hidden, restore it with empty content
+                    if (!newRows[r].columns[c] || newRows[r].columns[c].trim() === "") {
+                        newRows[r].columns[c] = "";
+                    }
+                }
+            }
+
+            return newRows;
+        };
+
+        // Update the active section
+        updateSection(activeSection, (prevRows) => processUnmerge(prevRows));
+    };
+
 
 
     if (!user) return null;
@@ -318,6 +369,7 @@ const SubmitSKP = () => {
                             editor={activeEditor}
                             selectedEditors={selectedEditors}
                             onMerge={handleMerge}
+                            onUnmerge={handleUnmerge}
                         />
                     </div>
                 </div>,

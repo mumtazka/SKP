@@ -57,7 +57,8 @@ const transformSkp = (skp) => {
         updatedAt: skp.updated_at,
         approvedAt: skp.approved_at,
         evaluatedAt: skp.evaluated_at,
-        user: skp.user ? transformUser(skp.user) : null
+        user: skp.user ? transformUser(skp.user) : null,
+        evaluator: skp.evaluator ? transformUser(skp.evaluator) : null
     };
 };
 
@@ -427,9 +428,13 @@ export const api = {
                 .select(`
                     *,
                     user:users!skps_user_id_fkey(
-                        id, full_name, email, role, identity_number, jabatan,
+                        id, full_name, email, role, identity_number, jabatan, pangkat,
                         department:departments(id, name, code),
                         study_program:study_programs(id, name, code)
+                    ),
+                    evaluator:users!skps_evaluator_id_fkey(
+                        id, full_name, identity_number, jabatan, pangkat,
+                        department:departments(id, name, code)
                     )
                 `)
                 .order('created_at', { ascending: false });

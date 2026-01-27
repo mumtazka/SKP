@@ -8,7 +8,7 @@ import { Plus, Trash2, Columns, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 
 // Editor Component for a single cell
-const EditorCell = ({ content, onUpdate, onFocus }) => {
+const EditorCell = ({ content, onUpdate, onFocus, readOnly = false }) => {
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -17,8 +17,9 @@ const EditorCell = ({ content, onUpdate, onFocus }) => {
             Placeholder.configure({ placeholder: '' }),
         ],
         content: content,
-        onUpdate: ({ editor }) => onUpdate(editor.getHTML()),
-        onFocus: ({ editor }) => onFocus(editor),
+        editable: !readOnly,
+        onUpdate: ({ editor }) => !readOnly && onUpdate(editor.getHTML()),
+        onFocus: ({ editor }) => !readOnly && onFocus(editor),
     });
 
     useEffect(() => {
@@ -29,18 +30,25 @@ const EditorCell = ({ content, onUpdate, onFocus }) => {
         }
     }, [content, editor]);
 
+    // Update editable state when readOnly changes
+    useEffect(() => {
+        if (editor) {
+            editor.setEditable(!readOnly);
+        }
+    }, [readOnly, editor]);
+
     return (
         <div className="flex-1 min-w-[200px] border-r border-gray-100 last:border-r-0 relative">
             <EditorContent
                 editor={editor}
-                className="prose prose-sm prose-purple max-w-none p-3 min-h-[50px] outline-none"
+                className={`prose prose-sm prose-purple max-w-none p-3 min-h-[50px] outline-none ${readOnly ? 'cursor-default select-none' : ''}`}
                 style={{ lineHeight: '1.5' }}
             />
         </div>
     );
 };
 
-const RowItem = ({ columns = [], index, onUpdate, onFocus, onDelete, isActive }) => {
+const RowItem = ({ columns = [], index, onUpdate, onFocus, onDelete, isActive, readOnly = false }) => {
     return (
         <div className={`flex border-b border-gray-100 last:border-b-0 group min-h-[50px] transition-colors ${isActive ? 'bg-purple-50/30' : ''}`}>
             {/* Number Column */}
@@ -59,25 +67,29 @@ const RowItem = ({ columns = [], index, onUpdate, onFocus, onDelete, isActive })
                         onUpdate(newCols);
                     }}
                     onFocus={onFocus}
+                    readOnly={readOnly}
                 />
             ))}
 
-            {/* Action Column */}
-            <div className="w-8 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center pt-2 gap-1 border-l border-transparent group-hover:border-gray-100 bg-gray-50/10">
-                <button
-                    onClick={onDelete}
-                    className="p-1 text-gray-400 hover:text-red-500 rounded"
-                    title="Delete Row"
-                >
-                    <Trash2 size={14} />
-                </button>
-            </div>
+            {/* Action Column - Only visible when not read-only */}
+            {!readOnly && (
+                <div className="w-8 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center pt-2 gap-1 border-l border-transparent group-hover:border-gray-100 bg-gray-50/10">
+                    <button
+                        onClick={onDelete}
+                        className="p-1 text-gray-400 hover:text-red-500 rounded"
+                        title="Delete Row"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
 
-const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback }) => {
+const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback, readOnly = false }) => {
     const handleAddRow = () => {
+        if (readOnly) return;
         // Find how many columns current rows have, default to 1
         const colCount = rows.length > 0 && rows[0].columns ? rows[0].columns.length : 1;
         const newRow = {
@@ -88,6 +100,7 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback }) => 
     };
 
     const handleAddColumn = () => {
+        if (readOnly) return;
         const newRows = rows.map(row => ({
             ...row,
             columns: [...(row.columns || [row.content || '']), ''] // append empty column
@@ -102,6 +115,7 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback }) => 
     };
 
     const handleDeleteRow = (index) => {
+        if (readOnly) return;
         const newRows = rows.filter((_, i) => i !== index);
         onChange(newRows);
     };
@@ -111,25 +125,31 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback }) => 
             <div className="bg-purple-50 px-4 py-2 border-b border-purple-100 flex justify-between items-center">
                 <h3 className="font-bold text-primary text-sm uppercase tracking-wide">
                     {title}
+                    {readOnly && (
+                        <span className="ml-2 text-xs font-medium text-gray-500 normal-case">(Hanya Baca)</span>
+                    )}
                 </h3>
-                <div className="flex gap-2">
-                    <Button
-                        size="sm"
-                        className="h-7 px-3 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-sm flex items-center"
-                        onClick={handleAddRow}
-                    >
-                        <Plus size={12} className="mr-1" />
-                        Row
-                    </Button>
-                    <Button
-                        size="sm"
-                        onClick={handleAddColumn}
-                        className="h-7 px-3 text-xs font-medium bg-primary hover:bg-purple-700 text-white border-none shadow-sm flex items-center"
-                    >
-                        <Columns size={12} className="mr-1" />
-                        Col
-                    </Button>
-                </div>
+                {/* Action buttons - only show when not read-only */}
+                {!readOnly && (
+                    <div className="flex gap-2">
+                        <Button
+                            size="sm"
+                            className="h-7 px-3 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-sm flex items-center"
+                            onClick={handleAddRow}
+                        >
+                            <Plus size={12} className="mr-1" />
+                            Row
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleAddColumn}
+                            className="h-7 px-3 text-xs font-medium bg-primary hover:bg-purple-700 text-white border-none shadow-sm flex items-center"
+                        >
+                            <Columns size={12} className="mr-1" />
+                            Col
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {feedback && (
@@ -149,6 +169,7 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback }) => 
                         index={index}
                         columns={row.columns || [row.content || '']} // fallback for old data
                         onUpdate={(newCols) => {
+                            if (readOnly) return;
                             const updatedRows = [...rows];
                             updatedRows[index] = { ...updatedRows[index], columns: newCols };
                             delete updatedRows[index].content;
@@ -156,6 +177,7 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback }) => 
                         }}
                         onFocus={onEditorFocus}
                         onDelete={() => handleDeleteRow(index)}
+                        readOnly={readOnly}
                     />
                 ))}
 

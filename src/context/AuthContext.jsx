@@ -45,8 +45,6 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (userData) => {
         try {
-            // calculated default role can be handled here or inside api.users.create if needed
-            // For now assuming userData contains role
             await api.users.create(userData);
 
             // Auto login after registration
@@ -76,8 +74,38 @@ export const AuthProvider = ({ children }) => {
         return user.role === requiredRoles;
     };
 
+    // Refresh user profile (useful after profile updates)
+    const refreshProfile = async () => {
+        if (!user?.id) return;
+
+        try {
+            const updatedUser = await api.users.getById(user.id);
+            if (updatedUser) {
+                setUser(updatedUser);
+                // Update session storage
+                const session = api.auth.getSession();
+                if (session) {
+                    session.user = updatedUser;
+                    const storage = localStorage.getItem('skp_session') ? localStorage : sessionStorage;
+                    storage.setItem('skp_session', JSON.stringify(session));
+                }
+            }
+        } catch (error) {
+            console.error('Failed to refresh profile:', error);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading, hasRole }}>
+        <AuthContext.Provider value={{
+            user,
+            login,
+            register,
+            logout,
+            loading,
+            hasRole,
+            refreshProfile,
+            setUser
+        }}>
             {children}
         </AuthContext.Provider>
     );

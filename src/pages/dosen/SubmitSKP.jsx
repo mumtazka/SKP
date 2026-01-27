@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import { toast } from 'sonner';
-import { Send, Save, AlertTriangle, Info } from 'lucide-react';
+import { Send, Save, AlertTriangle, Info, CheckCircle, Clock } from 'lucide-react';
 import SKPHeader from './components/SKPHeader';
 import SKPSection from './components/SKPSection';
 import Toolbar from './components/Toolbar';
@@ -80,10 +80,15 @@ const SubmitSKP = () => {
     const [portalTarget, setPortalTarget] = useState(null);
     const [feedback, setFeedback] = useState(null);
     const [existingSkpId, setExistingSkpId] = useState(null);
+    const [skpStatus, setSkpStatus] = useState(null); // Track the current SKP status
+    const [isReadOnly, setIsReadOnly] = useState(false); // Prevent editing when approved/pending
+    const [currentYearSkp, setCurrentYearSkp] = useState(null); // Track current year's SKP
 
     // UI State
     const [showConfirm, setShowConfirm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const currentYear = new Date().getFullYear().toString();
 
     useEffect(() => {
         setPortalTarget(document.getElementById('navbar-action-area'));
@@ -104,29 +109,49 @@ const SubmitSKP = () => {
             if (!user) return;
             try {
                 const skps = await api.skps.getByUser(user.id);
-                // Assuming we want the latest one or logic for 'current period'
-                const latest = skps.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
 
-                if (latest) {
-                    if (latest.status === 'Rejected') {
-                        console.log("Found rejected SKP", latest);
-                        setExistingSkpId(latest.id);
-                        setFeedback(latest.feedback);
-                        if (latest.details) {
-                            setData(latest.details);
+                // Find SKP for the current year
+                const currentYearSkpEntry = skps.find(s => s.period === currentYear);
+
+                if (currentYearSkpEntry) {
+                    setCurrentYearSkp(currentYearSkpEntry);
+                    setExistingSkpId(currentYearSkpEntry.id);
+                    setSkpStatus(currentYearSkpEntry.status);
+
+                    if (currentYearSkpEntry.status === 'Approved') {
+                        // SKP is approved - read-only mode
+                        setIsReadOnly(true);
+                        if (currentYearSkpEntry.details) {
+                            setData(currentYearSkpEntry.details);
+                        }
+                        toast.success("SKP tahun ini sudah disetujui. Anda hanya dapat melihat.");
+                    } else if (currentYearSkpEntry.status === 'Rejected') {
+                        // SKP is rejected - allow editing for revision
+                        setIsReadOnly(false);
+                        setFeedback(currentYearSkpEntry.feedback);
+                        if (currentYearSkpEntry.details) {
+                            setData(currentYearSkpEntry.details);
                         }
                         toast.warning("SKP Anda dikembalikan untuk revisi. Silakan cek catatan.");
-                    } else if (latest.status === 'Pending') {
-                        // View mode only? Or let them edit? For now let's warn.
-                        toast.info("Anda memiliki SKP yang sedang dalam proses review.");
+                    } else if (currentYearSkpEntry.status === 'Pending') {
+                        // SKP is pending - read-only mode
+                        setIsReadOnly(true);
+                        if (currentYearSkpEntry.details) {
+                            setData(currentYearSkpEntry.details);
+                        }
+                        toast.info("SKP sedang dalam proses review. Tidak dapat diedit.");
                     }
+                } else {
+                    // No SKP for current year - allow new submission
+                    setIsReadOnly(false);
+                    setSkpStatus(null);
                 }
             } catch (e) {
                 console.error("Failed to load existing SKP", e);
             }
         };
         loadExistingSkp();
-    }, [user]); // Run once when user loads
+    }, [user, currentYear]); // Run once when user loads
 
     useEffect(() => {
         const fetchEvaluator = async () => {
@@ -249,22 +274,67 @@ const SubmitSKP = () => {
             <div className="mb-6 flex justify-between items-end">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Perencanaan Kinerja</h1>
-                    <p className="text-gray-500">Isi rencana hasil kerja dan lampiran kinerja pegawai</p>
+                    <p className="text-gray-500">
+                        Isi rencana hasil kerja dan lampiran kinerja pegawai
+                        <span className="ml-2 text-sm font-medium text-primary">• Periode {currentYear}</span>
+                    </p>
                 </div>
 
                 <div className="text-xs text-gray-400 font-medium flex items-center gap-2">
-                    {isSaving ? (
-                        <span className="animate-pulse text-primary">Saving draft...</span>
-                    ) : lastSaved ? (
-                        <span className="flex items-center gap-1 text-primary">
-                            <Save size={12} />
-                            Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                    ) : (
-                        <span>Draft will auto-save</span>
+                    {!isReadOnly && (
+                        isSaving ? (
+                            <span className="animate-pulse text-primary">Saving draft...</span>
+                        ) : lastSaved ? (
+                            <span className="flex items-center gap-1 text-primary">
+                                <Save size={12} />
+                                Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        ) : (
+                            <span>Draft will auto-save</span>
+                        )
                     )}
                 </div>
             </div>
+
+            {/* APPROVED NOTICE */}
+            {skpStatus === 'Approved' && (
+                <div className="mb-8 bg-emerald-50 border border-emerald-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
+                    <div className="bg-emerald-100 p-2 rounded-full h-fit shrink-0">
+                        <CheckCircle className="text-emerald-600" size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-emerald-800 text-lg mb-2">SKP Telah Disetujui</h3>
+                        <p className="text-emerald-700 leading-relaxed">
+                            SKP untuk periode tahun {currentYear} sudah disetujui oleh pejabat penilai.
+                            SKP tidak dapat diedit lagi untuk tahun ini.
+                        </p>
+                        <div className="mt-4 flex items-center gap-2 text-sm text-emerald-600 font-medium bg-emerald-100/50 w-fit px-3 py-1.5 rounded-lg">
+                            <Info size={14} />
+                            Hubungi staff jika Anda perlu mengajukan ulang.
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PENDING NOTICE */}
+            {skpStatus === 'Pending' && (
+                <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
+                    <div className="bg-amber-100 p-2 rounded-full h-fit shrink-0">
+                        <Clock className="text-amber-600" size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-amber-800 text-lg mb-2">Menunggu Persetujuan</h3>
+                        <p className="text-amber-700 leading-relaxed">
+                            SKP untuk periode tahun {currentYear} sedang dalam proses review oleh pejabat penilai.
+                            Silakan tunggu hasil evaluasi.
+                        </p>
+                        <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 font-medium bg-amber-100/50 w-fit px-3 py-1.5 rounded-lg">
+                            <Info size={14} />
+                            SKP tidak dapat diedit selama dalam proses review.
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* REJECTION NOTICE */}
             {feedback && feedback.global && (
@@ -297,6 +367,7 @@ const SubmitSKP = () => {
                 onChange={(newRows) => updateSection('utama', () => newRows)}
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.utama}
+                readOnly={isReadOnly}
             />
 
             <SKPSection
@@ -305,6 +376,7 @@ const SubmitSKP = () => {
                 onChange={(newRows) => updateSection('tambahan', () => newRows)}
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.tambahan}
+                readOnly={isReadOnly}
             />
 
             {/* SECTION 2: LAMPIRAN */}
@@ -316,6 +388,7 @@ const SubmitSKP = () => {
                 onChange={(newRows) => updateSection('dukungan', () => newRows)}
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.dukungan}
+                readOnly={isReadOnly}
             />
 
             <SKPSection
@@ -324,6 +397,7 @@ const SubmitSKP = () => {
                 onChange={(newRows) => updateSection('skema', () => newRows)}
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.skema}
+                readOnly={isReadOnly}
             />
 
             <SKPSection
@@ -332,19 +406,22 @@ const SubmitSKP = () => {
                 onChange={(newRows) => updateSection('konsekuensi', () => newRows)}
                 onEditorFocus={setActiveEditor}
                 feedback={feedback?.sections?.konsekuensi}
+                readOnly={isReadOnly}
             />
 
-            {/* Floating Submit Button */}
-            <div className="fixed bottom-6 right-6 z-50">
-                <Button
-                    onClick={() => setShowConfirm(true)}
-                    variant="gradient"
-                    className="shadow-xl shadow-purple-500/30 px-8 py-4 rounded-full text-base font-bold flex items-center gap-2 transform hover:scale-105 transition-all"
-                >
-                    <Send size={18} />
-                    {existingSkpId ? 'Kirim Revisi SKP' : 'Ajukan SKP'}
-                </Button>
-            </div>
+            {/* Floating Submit Button - Only show when not read-only */}
+            {!isReadOnly && (
+                <div className="fixed bottom-6 right-6 z-50">
+                    <Button
+                        onClick={() => setShowConfirm(true)}
+                        variant="gradient"
+                        className="shadow-xl shadow-purple-500/30 px-8 py-4 rounded-full text-base font-bold flex items-center gap-2 transform hover:scale-105 transition-all"
+                    >
+                        <Send size={18} />
+                        {existingSkpId && skpStatus === 'Rejected' ? 'Kirim Revisi SKP' : 'Ajukan SKP'}
+                    </Button>
+                </div>
+            )}
         </div>
     );
 };

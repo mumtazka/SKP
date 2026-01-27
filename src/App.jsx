@@ -17,7 +17,6 @@ import Settings from '@/pages/Settings';
 // Dosen Pages
 import DosenDashboard from '@/pages/dosen/DosenDashboard';
 import SubmitSKP from '@/pages/dosen/SubmitSKP';
-import Progress from '@/pages/dosen/Progress';
 
 // Kepegawaian Pages
 import KepegawaianDashboard from '@/pages/kepegawaian/KepegawaianDashboard';
@@ -68,7 +67,7 @@ function App() {
                         <Route path="dosen">
                             <Route path="dashboard" element={<DosenDashboard />} />
                             <Route path="submit" element={<SubmitSKP />} />
-                            <Route path="progress" element={<Progress />} />
+                            <Route path="skp/submit" element={<SubmitSKP />} />
                             <Route path="history" element={<ComingSoon title="Riwayat SKP" />} />
                         </Route>
 
@@ -92,6 +91,7 @@ function App() {
                         {/* NEW ADMIN (Rater Assigner) */}
                         <Route path="admin">
                             <Route path="dashboard" element={<AdminDashboard />} />
+                            <Route path="users" element={<UserManagement />} />
                             <Route path="assign" element={<AssignRater />} />
                         </Route>
                     </Route>

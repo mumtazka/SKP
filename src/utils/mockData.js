@@ -110,30 +110,44 @@ export const INITIAL_USERS = [
   }
 ];
 
+// Start with empty SKPs - they will be created by users
 export const INITIAL_SKPS = [
   {
-    id: 'c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f',
-    userId: 'a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d',
-    year: '2024',
-    activity: 'Pengajaran Mata Kuliah AI',
-    category: 'Pengajaran',
-    target: '14 Pertemuan + UTS + UAS',
-    objectives: 'Menyelesaikan perkuliahan semester genap',
-    output: 'Nilai Mahasiswa',
-    startDate: '2024-02-01',
-    endDate: '2024-07-31',
-    status: 'In Progress',
-    progress: 40,
-    createdAt: '2024-01-15T08:00:00Z',
-    approvedAt: '2024-01-20T11:00:00Z'
+    id: 's1710520000000',
+    userId: 'a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d', // Dosen Ahmad
+    userName: 'Dr. Ahmad Suryadi, M.Kom',
+    evaluatorId: 'b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e', // Budi HR
+    period: new Date().getFullYear().toString(),
+    status: 'Approved',
+    progress: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    details: {
+      utama: [
+        { id: 1, columns: ['<p>Melaksanakan perkuliahan/tutorial dan membimbing, menguji serta menyelenggarakan pendidikan di laboratorium, praktik keguruan bengkel/studio/kebun percobaan/teknologi pengajaran dan praktik lapangan</p>'] },
+        { id: 2, columns: ['<p>Membimbing mahasiswa seminar</p>'] },
+        { id: 3, columns: ['<p>Membimbing mahasiswa kuliah kerja nyata, praktik kerja nyata, praktik kerja lapang</p>'] },
+        { id: 4, columns: ['<p>Menguji pada ujian akhir</p>'] }
+      ],
+      tambahan: [
+        { id: 1, columns: ['<p>Menjadi anggota dalam suatu panitia/badan pada perguruan tinggi</p>'] }
+      ],
+      dukungan: [
+        { id: 1, columns: ['<p>Dukungan sarana dan prasarana pembelajaran yang memadai</p>'] }
+      ],
+      skema: [
+        { id: 1, columns: ['<p>Hasil kerja dilaporkan setiap semester</p>'] }
+      ],
+      konsekuensi: [
+        { id: 1, columns: ['<p>Apabila tidak memenuhi target maka akan dilakukan evaluasi kinerja</p>'] }
+      ]
+    }
   }
 ];
 
 export const STATUS_COLORS = {
   'Pending': 'warning',
   'Approved': 'success',
-  'In Progress': 'info',
-  'Completed': 'success',
   'Rejected': 'destructive',
-  'Under Review': 'warning'
 };
+

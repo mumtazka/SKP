@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import StatCard from '@/components/dashboard/StatCard';
-import { FileText, CheckSquare, Clock, Users, CheckCircle, XCircle, Eye, MessageSquare, AlertCircle } from 'lucide-react';
+import { FileText, CheckSquare, Clock, Users, CheckCircle, XCircle, Eye, MessageSquare, AlertCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const KepegawaianDashboard = () => {
@@ -13,6 +13,8 @@ const KepegawaianDashboard = () => {
         evaluationsDone: 0
     });
     const [pendingSkps, setPendingSkps] = useState([]);
+    const [allSkps, setAllSkps] = useState([]); // All SKPs from assigned lecturers
+    const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'all'
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState(null);
     const [selectedSkp, setSelectedSkp] = useState(null);
@@ -48,6 +50,7 @@ const KepegawaianDashboard = () => {
             console.log('[Kepegawaian Dashboard] Pending SKPs:', pending.length);
 
             setPendingSkps(pending);
+            setAllSkps(mySkps); // Store all SKPs
             setStats({
                 pendingApprovals: pending.length,
                 totalEmployees: myAssignedLecturers.length,
@@ -117,6 +120,26 @@ const KepegawaianDashboard = () => {
             fetchData();
         } catch (error) {
             toast.error("Gagal menolak SKP");
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!selectedSkp) return;
+
+        if (!window.confirm(`Anda yakin ingin menghapus SKP dari ${selectedSkp.userName}? Dosen akan dapat mengajukan SKP baru.`)) {
+            return;
+        }
+
+        setProcessingId(selectedSkp.id);
+        try {
+            await api.skps.delete(selectedSkp.id);
+            toast.success("SKP berhasil dihapus. Dosen dapat mengajukan SKP baru.");
+            setSelectedSkp(null);
+            fetchData();
+        } catch (error) {
+            toast.error("Gagal menghapus SKP");
         } finally {
             setProcessingId(null);
         }
@@ -264,39 +287,71 @@ const KepegawaianDashboard = () => {
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-white hover:bg-gray-50 transition-colors shrink-0 z-10 rounded-b-xl">
+                        <div className="px-6 py-4 border-t border-gray-100 flex justify-between bg-white hover:bg-gray-50 transition-colors shrink-0 z-10 rounded-b-xl">
+                            {/* Left side - Delete button */}
                             <button
-                                onClick={() => setSelectedSkp(null)}
-                                className="px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
-                            >
-                                Batal
-                            </button>
-
-                            <button
-                                onClick={handleReject}
+                                onClick={handleDelete}
                                 disabled={processingId === selectedSkp.id}
-                                className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${feedbackMode ? 'bg-red-500 hover:bg-red-600 text-white shadow-md' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2 border border-red-200"
+                                title="Hapus SKP ini agar dosen dapat mengajukan ulang"
                             >
-                                {processingId === selectedSkp.id && processingId.includes('reject') ? 'Memproses...' : (
-                                    <>
-                                        <AlertCircle size={16} />
-                                        Tolak & Minta Revisi
-                                    </>
-                                )}
+                                <Trash2 size={16} />
+                                Hapus SKP
                             </button>
 
-                            <button
-                                onClick={handleApprove}
-                                disabled={processingId === selectedSkp.id || feedbackMode}
-                                className={`px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 transform active:scale-95 ${feedbackMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                {processingId === selectedSkp.id && !processingId.includes('reject') ? 'Memproses...' : (
+                            {/* Right side - Action buttons */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setSelectedSkp(null)}
+                                    className="px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                                >
+                                    Batal
+                                </button>
+
+                                {selectedSkp.status === 'Pending' && (
                                     <>
-                                        <CheckCircle size={16} />
-                                        Setujui & Validasi
+                                        <button
+                                            onClick={handleReject}
+                                            disabled={processingId === selectedSkp.id}
+                                            className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${feedbackMode ? 'bg-red-500 hover:bg-red-600 text-white shadow-md' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                                        >
+                                            {processingId === selectedSkp.id && processingId.includes('reject') ? 'Memproses...' : (
+                                                <>
+                                                    <AlertCircle size={16} />
+                                                    Tolak & Minta Revisi
+                                                </>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={handleApprove}
+                                            disabled={processingId === selectedSkp.id || feedbackMode}
+                                            className={`px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 transform active:scale-95 ${feedbackMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        >
+                                            {processingId === selectedSkp.id && !processingId.includes('reject') ? 'Memproses...' : (
+                                                <>
+                                                    <CheckCircle size={16} />
+                                                    Setujui & Validasi
+                                                </>
+                                            )}
+                                        </button>
                                     </>
                                 )}
-                            </button>
+
+                                {selectedSkp.status === 'Approved' && (
+                                    <span className="px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg flex items-center gap-2">
+                                        <CheckCircle size={16} />
+                                        Sudah Disetujui
+                                    </span>
+                                )}
+
+                                {selectedSkp.status === 'Rejected' && (
+                                    <span className="px-4 py-2 text-sm font-medium text-yellow-600 bg-yellow-50 rounded-lg flex items-center gap-2">
+                                        <AlertCircle size={16} />
+                                        Menunggu Revisi
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -333,22 +388,53 @@ const KepegawaianDashboard = () => {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                {/* Tab Header */}
                 <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-gray-900">Antrian Persetujuan SKP</h2>
-                    <span className="bg-yellow-100 text-yellow-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        {pendingSkps.length} Pending
-                    </span>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setActiveTab('pending')}
+                            className={`text-sm font-medium pb-2 border-b-2 transition-colors ${activeTab === 'pending'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            Antrian Persetujuan
+                            {pendingSkps.length > 0 && (
+                                <span className="ml-2 bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                    {pendingSkps.length}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('all')}
+                            className={`text-sm font-medium pb-2 border-b-2 transition-colors ${activeTab === 'all'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            Semua SKP
+                            <span className="ml-2 bg-gray-100 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                                {allSkps.length}
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
                 {loading ? (
                     <div className="p-8 text-center text-gray-400">Loading data...</div>
-                ) : pendingSkps.length === 0 ? (
+                ) : (activeTab === 'pending' ? pendingSkps : allSkps).length === 0 ? (
                     <div className="p-12 text-center flex flex-col items-center">
                         <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
                             <CheckCircle className="text-gray-300" size={24} />
                         </div>
-                        <p className="text-gray-900 font-medium">Semua beres!</p>
-                        <p className="text-gray-500 text-sm">Tidak ada pengajuan SKP yang perlu disetujui saat ini.</p>
+                        <p className="text-gray-900 font-medium">
+                            {activeTab === 'pending' ? 'Semua beres!' : 'Belum ada SKP'}
+                        </p>
+                        <p className="text-gray-500 text-sm">
+                            {activeTab === 'pending'
+                                ? 'Tidak ada pengajuan SKP yang perlu disetujui saat ini.'
+                                : 'Belum ada SKP yang diajukan oleh dosen yang Anda supervisi.'}
+                        </p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -357,13 +443,14 @@ const KepegawaianDashboard = () => {
                                 <tr>
                                     <th className="px-6 py-3">Pegawai</th>
                                     <th className="px-6 py-3">Unit Kerja</th>
+                                    <th className="px-6 py-3">Periode</th>
                                     <th className="px-6 py-3">Tanggal Pengajuan</th>
                                     <th className="px-6 py-3">Status</th>
                                     <th className="px-6 py-3 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {pendingSkps.map(skp => (
+                                {(activeTab === 'pending' ? pendingSkps : allSkps).map(skp => (
                                     <tr key={skp.id} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -379,13 +466,28 @@ const KepegawaianDashboard = () => {
                                         <td className="px-6 py-4 text-gray-600">
                                             {skp.user?.departmentName || '-'}
                                         </td>
+                                        <td className="px-6 py-4 text-gray-600 font-medium">
+                                            {skp.period || '-'}
+                                        </td>
                                         <td className="px-6 py-4 text-gray-600">
                                             {new Date(skp.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                Pending Review
-                                            </span>
+                                            {skp.status === 'Pending' && (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                    Pending Review
+                                                </span>
+                                            )}
+                                            {skp.status === 'Approved' && (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                                    Disetujui
+                                                </span>
+                                            )}
+                                            {skp.status === 'Rejected' && (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                    Ditolak
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">

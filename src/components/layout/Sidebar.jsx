@@ -26,7 +26,6 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         dosen: [
             { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
             { name: 'Ajukan SKP', icon: FileText, path: '/dosen/submit' },
-            { name: 'Progress', icon: ClipboardList, path: '/dosen/progress' },
             { name: 'Riwayat', icon: History, path: '/dosen/history' },
         ],
         kepegawaian: [
@@ -44,6 +43,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         ],
         admin: [
             { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
+            { name: 'User Management', icon: Users, path: '/admin/users' },
             { name: 'Assign Rater', icon: Users, path: '/admin/assign' },
         ]
     };

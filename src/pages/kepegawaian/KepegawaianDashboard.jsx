@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import StatCard from '@/components/dashboard/StatCard';
@@ -7,6 +8,7 @@ import { toast } from 'sonner';
 
 const KepegawaianDashboard = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [stats, setStats] = useState({
         pendingApprovals: 0,
         totalEmployees: 0,
@@ -503,7 +505,7 @@ const KepegawaianDashboard = () => {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button
-                                                    onClick={() => handleOpenModal(skp)}
+                                                    onClick={() => navigate(`/kepegawaian/approval/${skp.id}`, { state: { returnTo: '/kepegawaian/dashboard' } })}
                                                     className="p-2 text-gray-400 hover:text-primary hover:bg-purple-50 rounded-lg transition-colors group relative"
                                                     title="Lihat Detail"
                                                 >

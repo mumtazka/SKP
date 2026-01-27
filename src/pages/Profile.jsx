@@ -18,7 +18,10 @@ import {
     Home,
     IdCard,
     Save,
-    Camera
+    Camera,
+    Lock,
+    Key,
+    AlertCircle
 } from 'lucide-react';
 
 const Profile = () => {
@@ -27,12 +30,22 @@ const Profile = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showPhotoInput, setShowPhotoInput] = useState(false);
+
+    // Profile Form State
     const [editForm, setEditForm] = useState({
         photo: '',
         email: '',
         phoneNumber: '',
         address: ''
     });
+
+    // Password Form State
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [passwordLoading, setPasswordLoading] = useState(false);
 
     useEffect(() => {
         loadProfile();
@@ -71,11 +84,46 @@ const Profile = () => {
             await api.auth.updateProfile(user.id, editForm);
             toast.success('Profile updated successfully');
             loadProfile();
+            // Force reload to reflect changes in context/navbar
+            setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
             toast.error('Failed to update profile');
             console.error(error);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handlePasswordChange = async (e) => {
+        e.preventDefault();
+
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            toast.error("New passwords don't match");
+            return;
+        }
+
+        if (passwordForm.newPassword.length < 6) {
+            toast.error("Password must be at least 6 characters");
+            return;
+        }
+
+        setPasswordLoading(true);
+        try {
+            await api.auth.changePassword(
+                user.id,
+                passwordForm.currentPassword,
+                passwordForm.newPassword
+            );
+            toast.success('Password changed successfully');
+            setPasswordForm({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            });
+        } catch (error) {
+            toast.error(error.message || 'Failed to change password');
+        } finally {
+            setPasswordLoading(false);
         }
     };
 
@@ -328,21 +376,97 @@ const Profile = () => {
                         </div>
                     </div>
 
-                    {/* Timestamps */}
-                    <div className="mt-8 pt-6 border-t border-gray-100">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center gap-2 text-gray-500">
-                                <Calendar size={14} />
-                                <span>Created: {formatDate(data.createdAt)}</span>
+                </div>
+            </div>
+
+            {/* Security Section (Merged from Settings) - Outside the main profile card to separate it slightly visually, or could be inside. Let's put it inside a new card or just below. Instructions said merge into one menu. Let's keep it in the same flow but maybe separate card or same. Let's put it in a separate card for visual separation but same page. */}
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Lock size={20} className="text-gray-500" />
+                    Security & Password
+                </h3>
+
+                <form onSubmit={handlePasswordChange} className="max-w-xl space-y-6">
+                    <div className="p-4 bg-orange-50 border border-orange-100 rounded-lg flex items-start gap-3">
+                        <AlertCircle className="text-orange-600 shrink-0 mt-0.5" size={18} />
+                        <div className="text-sm text-orange-800">
+                            <p className="font-medium">Password Requirements</p>
+                            <ul className="list-disc list-inside mt-1 text-orange-700/80 space-y-0.5">
+                                <li>At least 6 characters long</li>
+                                <li>Must be different from previous password</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Current Password</label>
+                            <Input
+                                type="password"
+                                value={passwordForm.currentPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                placeholder="Enter current password"
+                                required
+                                className="bg-gray-50/50"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">New Password</label>
+                                <Input
+                                    type="password"
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                    placeholder="New password"
+                                    required
+                                    className="bg-gray-50/50"
+                                />
                             </div>
-                            <div className="flex items-center gap-2 text-gray-500">
-                                <Calendar size={14} />
-                                <span>Last Updated: {formatDate(data.updatedAt)}</span>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Confirm Password</label>
+                                <Input
+                                    type="password"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                    placeholder="Confirm new password"
+                                    required
+                                    className="bg-gray-50/50"
+                                />
                             </div>
                         </div>
                     </div>
+
+                    <div>
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            isLoading={passwordLoading}
+                            className="flex items-center gap-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors"
+                        >
+                            <Key size={16} />
+                            Update Password
+                        </Button>
+                    </div>
+                </form>
+            </div>
+
+            {/* Timestamps */}
+            <div className="mt-4 text-center">
+                <div className="inline-flex items-center justify-center gap-6 text-xs text-gray-400">
+                    <div className="flex items-center gap-1.5">
+                        <Calendar size={12} />
+                        <span>Created: {formatDate(data.createdAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <Calendar size={12} />
+                        <span>Last Updated: {formatDate(data.updatedAt)}</span>
+                    </div>
                 </div>
             </div>
+
         </div>
     );
 };

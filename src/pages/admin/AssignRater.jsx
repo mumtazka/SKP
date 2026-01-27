@@ -29,7 +29,7 @@ const AssignRater = () => {
             setUsers(allUsers);
         } catch (error) {
             console.error("Failed to load users", error);
-            toast.error("Failed to load users");
+            toast.error("Gagal memuat pengguna");
         } finally {
             setLoading(false);
         }
@@ -52,7 +52,7 @@ const AssignRater = () => {
 
     const handleSaveAssignment = async () => {
         if (!formData.pejabatPenilaiId) {
-            toast.error("Please select Pejabat Penilai");
+            toast.error("Mohon pilih Pejabat Penilai");
             return;
         }
 
@@ -87,11 +87,11 @@ const AssignRater = () => {
                 console.error("VERIFICATION FAILED!");
                 console.error("Expected:", finalId);
                 console.error("Got:", updatedUser.raters?.pejabatPenilaiId);
-                throw new Error("Verification failed: Data not saved correctly.");
+                throw new Error("Verifikasi gagal: Data tidak tersimpan dengan benar.");
             }
 
             console.log("✓ Verification successful!");
-            toast.success(`Raters assigned for ${selectedLecturer.fullName}`);
+            toast.success(`Pejabat Penilai diatur untuk ${selectedLecturer.fullName}`);
             setIsModalOpen(false);
 
             // 3. Force reload data
@@ -107,7 +107,7 @@ const AssignRater = () => {
         } catch (error) {
             console.error("=== ASSIGNMENT ERROR ===");
             console.error("Error:", error);
-            toast.error(`Failed to save: ${error.message}`);
+            toast.error(`Gagal menyimpan: ${error.message}`);
         }
     };
 
@@ -115,8 +115,8 @@ const AssignRater = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Assign Raters</h1>
-                    <p className="text-gray-500">Manage Pejabat Penilai for Lecturers</p>
+                    <h1 className="text-2xl font-bold tracking-tight">Atur Pejabat Penilai</h1>
+                    <p className="text-gray-500">Kelola Pejabat Penilai untuk Dosen</p>
                 </div>
             </div>
 
@@ -125,7 +125,7 @@ const AssignRater = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                     type="text"
-                    placeholder="Search lecturers..."
+                    placeholder="Cari dosen..."
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -163,7 +163,7 @@ const AssignRater = () => {
                                             {pejabatPenilai ? (
                                                 <span className="font-medium truncate block">{pejabatPenilai.fullName}</span>
                                             ) : (
-                                                <span className="text-gray-400 italic">Not assigned</span>
+                                                <span className="text-gray-400 italic">Belum ditentukan</span>
                                             )}
                                         </div>
                                     </div>
@@ -175,7 +175,7 @@ const AssignRater = () => {
                                         onClick={() => handleAssignClick(lecturer)}
                                     >
                                         <UserPlus className="h-4 w-4" />
-                                        {lecturer.raters ? 'Edit Assignment' : 'Assign Raters'}
+                                        {lecturer.raters ? 'Edit Penilai' : 'Atur Penilai'}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -185,7 +185,7 @@ const AssignRater = () => {
 
                 {filteredLecturers.length === 0 && (
                     <div className="col-span-full text-center py-12 text-gray-500">
-                        No lecturers found matching your search.
+                        Tidak ada dosen yang cocok dengan pencarian.
                     </div>
                 )}
             </div>
@@ -195,7 +195,7 @@ const AssignRater = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-lg font-semibold">Assign Raters</h2>
+                            <h2 className="text-lg font-semibold">Atur Pejabat Penilai</h2>
                             <button
                                 onClick={() => setIsModalOpen(false)}
                                 className="text-gray-400 hover:text-gray-600"
@@ -212,7 +212,7 @@ const AssignRater = () => {
                                     className="h-10 w-10 rounded-full"
                                 />
                                 <div>
-                                    <p className="text-sm text-gray-500">Assigning for:</p>
+                                    <p className="text-sm text-gray-500">Mengatur penilai untuk:</p>
                                     <p className="font-medium text-blue-900">{selectedLecturer.fullName}</p>
                                 </div>
                             </div>
@@ -229,8 +229,8 @@ const AssignRater = () => {
                                         setFormData({ ...formData, pejabatPenilaiId: user ? user.id : '' });
                                     }}
                                 >
-                                    <option value="">Select Pejabat Penilai</option>
-                                    {users.filter(u => u.id !== selectedLecturer.id).map(u => (
+                                    <option value="" disabled hidden>Pilih Pejabat Penilai</option>
+                                    {users.filter(u => u.role === 'kepegawaian').map(u => (
                                         <option key={u.id} value={u.id}>
                                             {u.fullName} ({u.role})
                                         </option>
@@ -240,8 +240,8 @@ const AssignRater = () => {
                         </div>
 
                         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                            <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSaveAssignment}>Save Assignment</Button>
+                            <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Batal</Button>
+                            <Button onClick={handleSaveAssignment}>Simpan</Button>
                         </div>
                     </div>
                 </div>

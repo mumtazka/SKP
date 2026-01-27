@@ -14,7 +14,7 @@ const EditorCell = ({ content, onUpdate, onFocus, readOnly = false }) => {
             StarterKit,
             Underline,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({ placeholder: '' }),
+            Placeholder.configure({ placeholder: 'Klik untuk mengisi...' }),
         ],
         content: content,
         editable: !readOnly,
@@ -38,21 +38,23 @@ const EditorCell = ({ content, onUpdate, onFocus, readOnly = false }) => {
     }, [readOnly, editor]);
 
     return (
-        <div className="flex-1 min-w-[200px] border-r border-gray-100 last:border-r-0 relative">
+        <div className="flex-1 min-w-[200px] border-r-2 border-purple-200 last:border-r-0 relative bg-white hover:bg-purple-50/30 transition-colors">
             <EditorContent
                 editor={editor}
-                className={`prose prose-sm prose-purple max-w-none p-3 min-h-[50px] outline-none ${readOnly ? 'cursor-default select-none' : ''}`}
-                style={{ lineHeight: '1.5' }}
+                className={`prose prose-sm prose-purple max-w-none p-4 min-h-[60px] outline-none ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
+                style={{ lineHeight: '1.6' }}
             />
         </div>
     );
 };
 
 const RowItem = ({ columns = [], index, onUpdate, onFocus, onDelete, isActive, readOnly = false }) => {
+    const isEven = index % 2 === 0;
+
     return (
-        <div className={`flex border-b border-gray-100 last:border-b-0 group min-h-[50px] transition-colors ${isActive ? 'bg-purple-50/30' : ''}`}>
+        <div className={`flex border-b-2 border-purple-200 last:border-b-0 group min-h-[60px] transition-all ${isActive ? 'bg-purple-100/50 ring-2 ring-purple-300 ring-inset' : isEven ? 'bg-white' : 'bg-purple-50/20'}`}>
             {/* Number Column */}
-            <div className={`w-10 sm:w-14 border-r border-gray-100 flex items-start justify-center pt-3 text-sm font-semibold shrink-0 select-none ${isActive ? 'text-primary' : 'text-gray-500'}`}>
+            <div className={`w-12 sm:w-16 border-r-2 border-purple-200 flex items-center justify-center text-sm font-bold shrink-0 select-none ${isActive ? 'bg-primary text-white' : 'bg-purple-100 text-primary'}`}>
                 {index + 1}
             </div>
 
@@ -73,13 +75,13 @@ const RowItem = ({ columns = [], index, onUpdate, onFocus, onDelete, isActive, r
 
             {/* Action Column - Only visible when not read-only */}
             {!readOnly && (
-                <div className="w-8 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center pt-2 gap-1 border-l border-transparent group-hover:border-gray-100 bg-gray-50/10">
+                <div className="w-10 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 bg-gray-50 border-l-2 border-purple-200">
                     <button
                         onClick={onDelete}
-                        className="p-1 text-gray-400 hover:text-red-500 rounded"
-                        title="Delete Row"
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="Hapus Baris"
                     >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} />
                     </button>
                 </div>
             )}
@@ -121,12 +123,14 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback, readO
     };
 
     return (
-        <div className={`rounded-lg overflow-hidden bg-white shadow-sm mb-6 border ${feedback ? 'border-yellow-300 ring-2 ring-yellow-100/50' : 'border-purple-100'}`}>
-            <div className="bg-purple-50 px-4 py-2 border-b border-purple-100 flex justify-between items-center">
-                <h3 className="font-bold text-primary text-sm uppercase tracking-wide">
+        <div className={`rounded-xl overflow-hidden bg-white shadow-md mb-6 border-2 ${feedback ? 'border-yellow-400 ring-4 ring-yellow-100' : 'border-purple-300'}`}>
+            {/* Section Header */}
+            <div className="bg-gradient-to-r from-purple-100 to-purple-50 px-4 py-3 border-b-2 border-purple-300 flex justify-between items-center">
+                <h3 className="font-bold text-primary text-sm uppercase tracking-wide flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary"></span>
                     {title}
                     {readOnly && (
-                        <span className="ml-2 text-xs font-medium text-gray-500 normal-case">(Hanya Baca)</span>
+                        <span className="ml-2 text-xs font-medium text-gray-500 normal-case bg-gray-200 px-2 py-0.5 rounded">(Hanya Baca)</span>
                     )}
                 </h3>
                 {/* Action buttons - only show when not read-only */}
@@ -134,18 +138,18 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback, readO
                     <div className="flex gap-2">
                         <Button
                             size="sm"
-                            className="h-7 px-3 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-sm flex items-center"
+                            className="h-8 px-4 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-md flex items-center"
                             onClick={handleAddRow}
                         >
-                            <Plus size={12} className="mr-1" />
+                            <Plus size={14} className="mr-1" />
                             Row
                         </Button>
                         <Button
                             size="sm"
                             onClick={handleAddColumn}
-                            className="h-7 px-3 text-xs font-medium bg-primary hover:bg-purple-700 text-white border-none shadow-sm flex items-center"
+                            className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-purple-700 text-white border-none shadow-md flex items-center"
                         >
-                            <Columns size={12} className="mr-1" />
+                            <Columns size={14} className="mr-1" />
                             Col
                         </Button>
                     </div>
@@ -153,16 +157,29 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback, readO
             </div>
 
             {feedback && (
-                <div className="bg-yellow-50 text-yellow-800 text-sm p-3 border-b border-yellow-200 flex items-start gap-2 animate-in slide-in-from-top-2">
-                    <MessageSquare size={16} className="mt-0.5 shrink-0 text-yellow-600" />
+                <div className="bg-yellow-50 text-yellow-800 text-sm p-4 border-b-2 border-yellow-300 flex items-start gap-3 animate-in slide-in-from-top-2">
+                    <div className="bg-yellow-200 p-1.5 rounded-full">
+                        <MessageSquare size={16} className="text-yellow-700" />
+                    </div>
                     <div className="flex-1">
                         <span className="font-bold block text-xs uppercase mb-1 text-yellow-700">Catatan Revisi:</span>
-                        <p>{feedback}</p>
+                        <p className="text-yellow-800">{feedback}</p>
                     </div>
                 </div>
             )}
 
-            <div className="divide-y divide-purple-50">
+            {/* Table Header Row */}
+            <div className="flex bg-purple-100 border-b-2 border-purple-300">
+                <div className="w-12 sm:w-16 border-r-2 border-purple-300 flex items-center justify-center py-2 text-xs font-bold text-primary uppercase">
+                    No
+                </div>
+                <div className="flex-1 py-2 px-4 text-xs font-bold text-primary uppercase">
+                    Uraian Kegiatan
+                </div>
+            </div>
+
+            {/* Table Body */}
+            <div className="divide-y-0">
                 {rows.map((row, index) => (
                     <RowItem
                         key={row.id}
@@ -182,8 +199,10 @@ const SKPSection = ({ title, rows = [], onChange, onEditorFocus, feedback, readO
                 ))}
 
                 {rows.length === 0 && (
-                    <div className="p-8 text-center text-gray-400 text-sm italic bg-purple-50/10">
-                        No rows added. Click "+ Row" to start adding items.
+                    <div className="p-12 text-center text-gray-400 text-sm bg-purple-50/30 border-t-2 border-purple-200">
+                        <div className="text-4xl mb-3">📝</div>
+                        <p className="font-medium text-gray-500">Belum ada isian</p>
+                        <p className="text-xs mt-1">Klik tombol <span className="font-semibold text-emerald-600">+ Row</span> untuk menambahkan baris</p>
                     </div>
                 )}
             </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, X, Save, User as UserIcon, Building2, Briefcase, Hash, Award } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import { toast } from 'sonner';
 import { Input } from '@/components/common/Input';
@@ -14,6 +15,7 @@ const InfoRow = ({ label, value }) => (
 );
 
 const SKPHeader = ({ employee, evaluator }) => {
+    const { refreshProfile } = useAuth();
     const [pangkatOptions, setPangkatOptions] = useState([]);
     const [jabatanOptions, setJabatanOptions] = useState([]);
     const [isEditing, setIsEditing] = useState(false);
@@ -54,9 +56,9 @@ const SKPHeader = ({ employee, evaluator }) => {
         setIsSaving(true);
         try {
             await api.users.update(employee.id, formData);
+            await refreshProfile();
             toast.success('Data pegawai berhasil diperbarui');
             setIsEditing(false);
-            setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
             console.error('Update failed:', error);
             toast.error('Gagal memperbarui data pegawai');

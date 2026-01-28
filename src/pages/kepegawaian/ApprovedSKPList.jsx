@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 import { DataTable } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
@@ -11,6 +12,7 @@ import Modal from '@/components/common/Modal';
 
 const ApprovedSKPList = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [skps, setSkps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [downloadingId, setDownloadingId] = useState(null);
@@ -24,10 +26,31 @@ const ApprovedSKPList = () => {
     const fetchSkps = async () => {
         setLoading(true);
         try {
-            const allSkps = await api.skps.getAll();
-            // Filter only approved
-            setSkps(allSkps.filter(s => s.status === 'Approved'));
+            const [allSkps, allUsers] = await Promise.all([
+                api.skps.getAll(),
+                api.users.getAll()
+            ]);
+
+            if (user) {
+                // Logic 1: Users who have explicitly assigned this user as their evaluator in their profile
+                const myAssignedLecturers = allUsers.filter(u =>
+                    u.role === 'dosen' &&
+                    u.raters?.pejabatPenilaiId === user.id
+                );
+                const myAssignedLecturerIds = myAssignedLecturers.map(l => l.id);
+
+                // Filter SKPs:
+                // 1. Must be 'Approved'
+                // 2. AND (Belongs to an assigned lecturer OR Explicitly assigned as evaluator on the SKP)
+                const filteredSkps = allSkps.filter(s =>
+                    s.status === 'Approved' &&
+                    (myAssignedLecturerIds.includes(s.userId) || s.evaluatorId === user.id)
+                );
+
+                setSkps(filteredSkps);
+            }
         } catch (err) {
+            console.error(err);
             toast.error("Failed to fetch SKP list");
         } finally {
             setLoading(false);
@@ -35,8 +58,10 @@ const ApprovedSKPList = () => {
     };
 
     useEffect(() => {
-        fetchSkps();
-    }, []);
+        if (user) {
+            fetchSkps();
+        }
+    }, [user]);
 
     const generatePDF = async (skp) => {
         setDownloadingId(skp.id);

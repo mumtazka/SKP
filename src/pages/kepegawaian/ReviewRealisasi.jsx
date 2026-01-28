@@ -43,10 +43,13 @@ const ReviewRealisasi = () => {
             const existingFeedback = {};
             if (data.realisasi) {
                 Object.keys(data.realisasi).forEach(sectionKey => {
-                    existingFeedback[sectionKey] = data.realisasi[sectionKey]?.map(row => ({
-                        id: row.id,
-                        umpanBalik: row.umpanBalik || ''
-                    })) || [];
+                    existingFeedback[sectionKey] = data.realisasi[sectionKey]?.map(row => {
+                        if (!row) return { id: null, umpanBalik: '' };
+                        return {
+                            id: row.id,
+                            umpanBalik: row.umpanBalik || ''
+                        };
+                    }) || [];
                 });
             }
             setFeedback(existingFeedback);
@@ -110,47 +113,39 @@ const ReviewRealisasi = () => {
         }
     };
 
-    const handleReject = async () => {
-        if (!skp) return;
 
-        if (!window.confirm('Apakah Anda yakin ingin menolak realisasi ini? Dosen akan dapat mengedit ulang realisasinya.')) {
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
-            // Clear umpanBalik from realisasi data when rejecting
-            const clearedRealisasi = { ...skp.realisasi };
-
-            Object.keys(clearedRealisasi).forEach(sectionKey => {
-                if (Array.isArray(clearedRealisasi[sectionKey])) {
-                    clearedRealisasi[sectionKey] = clearedRealisasi[sectionKey].map(row => ({
-                        ...row,
-                        umpanBalik: '' // Clear feedback
-                    }));
-                }
-            });
-
-            await api.skps.update(skp.id, {
-                realisasi: clearedRealisasi,
-                realisasiStatus: null, // Reset to allow re-editing
-                realisasiSubmittedAt: null,
-                realisasiReviewedAt: null,
-                realisasiReviewerId: null
-            });
-
-            toast.success('Realisasi ditolak. Dosen dapat mengedit ulang.');
-            navigate(returnTo);
-        } catch (error) {
-            console.error('Failed to reject:', error);
-            toast.error('Gagal menolak realisasi');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
 
     const renderSection = (sectionKey, sectionTitle, planRows, realisasiRows) => {
         if (!planRows || planRows.length === 0) return null;
+
+        // Group rows: numbered row starts a new group, sub-rows (no number) belong to previous group
+        const groups = [];
+        let currentGroup = null;
+
+        planRows.forEach((row, index) => {
+            const hasNumber = row.number && row.number.trim() !== '';
+
+            if (hasNumber) {
+                // Start a new group
+                currentGroup = {
+                    number: row.number,
+                    rows: [{ ...row, originalIndex: index }],
+                    startIndex: index
+                };
+                groups.push(currentGroup);
+            } else if (currentGroup) {
+                // Add to current group (sub-row)
+                currentGroup.rows.push({ ...row, originalIndex: index });
+            } else {
+                // No current group yet (edge case: first row has no number)
+                currentGroup = {
+                    number: '',
+                    rows: [{ ...row, originalIndex: index }],
+                    startIndex: index
+                };
+                groups.push(currentGroup);
+            }
+        });
 
         return (
             <div key={sectionKey} className="mb-8">
@@ -159,61 +154,95 @@ const ReviewRealisasi = () => {
                     {sectionTitle}
                 </h3>
 
-                <div className="space-y-4">
-                    {planRows.map((row, index) => {
-                        const realisasiRow = realisasiRows?.[index] || {};
-                        const feedbackRow = feedback[sectionKey]?.[index] || {};
-                        const planContent = row.columns?.[0] || '';
+                <div className="border border-t-0 border-blue-300 overflow-x-auto rounded-lg">
+                    <table className="w-full border-collapse">
+                        <colgroup>
+                            <col style={{ width: '40px' }} />
+                            <col style={{ width: '40%' }} />
+                            <col style={{ width: '30%' }} />
+                            <col style={{ width: '30%' }} />
+                        </colgroup>
+                        <thead>
+                            <tr className="bg-blue-100 border-b border-blue-300">
+                                <th className="border-r border-blue-300 py-2 px-2 text-xs font-bold text-blue-800 text-center">No</th>
+                                <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Rencana Kinerja</th>
+                                <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Realisasi</th>
+                                <th className="py-2 px-3 text-xs font-bold text-blue-800 text-left">Umpan Balik</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {groups.map((group, groupIndex) => {
+                                const groupRowCount = group.rows.length;
 
-                        return (
-                            <div key={row.id || index} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-                                <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                                    <span className="text-xs font-semibold text-gray-500">
-                                        Item #{index + 1}
-                                    </span>
-                                </div>
+                                return group.rows.map((row, rowInGroup) => {
+                                    const isFirstInGroup = rowInGroup === 0;
+                                    const planContent = row.columns?.[0] || '';
+                                    const realisasiRow = realisasiRows?.[row.originalIndex] || {};
+                                    const feedbackRow = feedback[sectionKey]?.[row.originalIndex] || {};
 
-                                <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                    {/* Plan */}
-                                    <div>
-                                        <div className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                                            Rencana Kinerja
-                                        </div>
-                                        <div
-                                            className="prose prose-sm max-w-none text-gray-700 bg-blue-50 rounded-lg p-3 border border-blue-100 min-h-[80px]"
-                                            dangerouslySetInnerHTML={{ __html: planContent }}
-                                        />
-                                    </div>
-
-                                    {/* Realization */}
-                                    <div>
-                                        <div className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                                            Realisasi
-                                        </div>
-                                        <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100 min-h-[80px] text-sm text-gray-700">
-                                            {realisasiRow.realisasi || (
-                                                <span className="text-gray-400 italic">Belum diisi</span>
+                                    return (
+                                        <tr
+                                            key={row.id || row.originalIndex}
+                                            className={`border-b border-blue-200 hover:bg-blue-50/30 transition-colors ${rowInGroup > 0 ? 'bg-blue-50/20' : ''}`}
+                                        >
+                                            {/* Number - Only show for first row in group, with rowSpan */}
+                                            {isFirstInGroup && (
+                                                <td
+                                                    className="border-r border-blue-200 py-2 px-2 text-center align-top bg-blue-50"
+                                                    rowSpan={groupRowCount}
+                                                >
+                                                    {group.number && (
+                                                        <span className="text-sm font-bold text-blue-700">{group.number}</span>
+                                                    )}
+                                                </td>
                                             )}
-                                        </div>
-                                    </div>
 
-                                    {/* Feedback */}
-                                    <div>
-                                        <div className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-                                            <MessageSquare size={12} />
-                                            Umpan Balik
-                                        </div>
-                                        <textarea
-                                            value={feedbackRow.umpanBalik || ''}
-                                            onChange={(e) => handleFeedbackChange(sectionKey, index, e.target.value)}
-                                            placeholder="Tuliskan umpan balik untuk item ini..."
-                                            className="w-full min-h-[80px] p-3 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-200 focus:border-amber-400 outline-none text-sm resize-y bg-amber-50"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                                            {/* Plan Content */}
+                                            <td className="border-r border-blue-200 p-0 align-top">
+                                                <div
+                                                    className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px]"
+                                                    dangerouslySetInnerHTML={{ __html: planContent }}
+                                                />
+                                            </td>
+
+                                            {/* Realization - Only show for first row in group, with rowSpan */}
+                                            {isFirstInGroup && (
+                                                <td
+                                                    className="border-r border-blue-200 p-0 align-top"
+                                                    rowSpan={groupRowCount}
+                                                >
+                                                    {/* Use data from the start index of the group */}
+                                                    <div
+                                                        className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px] bg-white h-full"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: realisasiRows?.[group.startIndex]?.realisasi || '<span class="text-gray-400 italic">Belum diisi</span>'
+                                                        }}
+                                                    />
+                                                </td>
+                                            )}
+
+                                            {/* Feedback - Only show for first row in group, with rowSpan */}
+                                            {isFirstInGroup && (
+                                                <td
+                                                    className="p-0 align-top"
+                                                    rowSpan={groupRowCount}
+                                                    style={{ height: '1px' }}
+                                                >
+                                                    <textarea
+                                                        value={feedback[sectionKey]?.[group.startIndex]?.umpanBalik || ''}
+                                                        onChange={(e) => handleFeedbackChange(sectionKey, group.startIndex, e.target.value)}
+                                                        placeholder="Tuliskan umpan balik..."
+                                                        className="w-full h-full p-3 border-0 bg-amber-50 focus:ring-2 focus:ring-amber-200 focus:bg-amber-50/80 outline-none text-sm resize-none block"
+                                                        style={{ minHeight: '100px' }}
+                                                    />
+                                                </td>
+                                            )}
+                                        </tr>
+                                    );
+                                });
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         );
@@ -299,14 +328,7 @@ const ReviewRealisasi = () => {
                 >
                     Batal
                 </Button>
-                <Button
-                    variant="outline"
-                    onClick={handleReject}
-                    isLoading={isSubmitting}
-                    className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                >
-                    Tolak & Kembalikan
-                </Button>
+
                 <Button
                     variant="gradient"
                     onClick={handleSubmitReview}

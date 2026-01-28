@@ -247,10 +247,10 @@ const RealisasiSKP = () => {
     };
 
     // Check if the form should be editable
-    // It is editable if it's NOT under review (Pending + Submitted date) AND NOT fully reviewed
+    // It is editable if it's NOT under review (Pending + Submitted date)
+    // We allow editing if it is 'Reviewed' so they can make changes and resend
     const isPendingReview = selectedSkp?.realisasiStatus === 'Pending' && selectedSkp?.realisasiSubmittedAt;
-    const isReviewed = selectedSkp?.realisasiStatus === 'Reviewed';
-    const isEditable = !isPendingReview && !isReviewed;
+    const isEditable = !isPendingReview;
 
     const renderSection = (sectionKey, sectionTitle, rows) => {
         if (!rows || rows.length === 0) return null;
@@ -359,9 +359,12 @@ const RealisasiSKP = () => {
                                                             placeholder="Tuliskan realisasi..."
                                                         />
                                                     ) : (
-                                                        <div className="p-3 text-sm text-gray-700 min-h-[80px] bg-gray-50">
-                                                            {realisasiRow.realisasi || <span className="text-gray-400 italic">-</span>}
-                                                        </div>
+                                                        <div
+                                                            className="p-3 text-sm text-gray-700 min-h-[80px] bg-gray-50 prose prose-sm max-w-none"
+                                                            dangerouslySetInnerHTML={{
+                                                                __html: realisasiRow.realisasi || '<span class="text-gray-400 italic">-</span>'
+                                                            }}
+                                                        />
                                                     )}
                                                 </td>
                                             )}
@@ -371,16 +374,17 @@ const RealisasiSKP = () => {
                                                 <td
                                                     className="p-0 align-top"
                                                     rowSpan={groupRowCount}
+                                                    style={{ height: '1px' }}
                                                 >
-                                                    <div className="p-3 min-h-[80px]">
-                                                        {realisasiRow.umpanBalik ? (
-                                                            <div className="text-sm text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
-                                                                {realisasiRow.umpanBalik}
-                                                            </div>
-                                                        ) : (
+                                                    {realisasiRow.umpanBalik ? (
+                                                        <div className="w-full h-full text-sm text-gray-800 bg-amber-50 p-3 min-h-[100px]">
+                                                            {realisasiRow.umpanBalik}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-full h-full p-3 min-h-[100px] flex items-start">
                                                             <span className="text-gray-400 text-sm italic">Belum ada umpan balik</span>
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             )}
                                         </tr>
@@ -460,7 +464,7 @@ const RealisasiSKP = () => {
             )}
 
             {/* STICKY TOOLBAR (Safety Fallback) */}
-            {selectedSkp && (!selectedSkp.realisasiStatus || !['Pending', 'Reviewed'].includes(selectedSkp.realisasiStatus)) && (
+            {selectedSkp && (!selectedSkp.realisasiStatus || !['Pending'].includes(selectedSkp.realisasiStatus)) && (
                 <div className="sticky top-16 z-40 bg-white/95 backdrop-blur shadow-md border border-blue-200 rounded-lg p-1.5 mb-4 mx-1 animate-in fade-in slide-in-from-top-4">
                     <Toolbar
                         editor={activeEditor}
@@ -495,7 +499,7 @@ const RealisasiSKP = () => {
                             <div>
                                 <h3 className="font-semibold text-emerald-900">Sudah Direview</h3>
                                 <p className="text-emerald-700 text-sm">
-                                    Realisasi SKP Anda telah direview oleh pejabat penilai. Lihat umpan balik di kolom kanan.
+                                    SKP ini telah direview. Anda dapat <b>mengedit kembali</b> realisasi di bawah ini dan menyimpan perubahan untuk dikirim ulang.
                                 </p>
                             </div>
                         </div>
@@ -515,26 +519,40 @@ const RealisasiSKP = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    {selectedSkp.realisasiStatus !== 'Pending' && selectedSkp.realisasiStatus !== 'Reviewed' && (
+                    {selectedSkp.realisasiStatus !== 'Pending' && (
                         <div className="flex justify-end gap-4 pt-4 border-t border-gray-100">
-                            <Button
-                                variant="outline"
-                                onClick={handleSaveDraft}
-                                isLoading={isSaving}
-                                className="flex items-center gap-2"
-                            >
-                                <Save size={16} />
-                                Simpan Draft
-                            </Button>
-                            <Button
-                                variant="gradient"
-                                onClick={handleSubmitRealisasi}
-                                isLoading={isSubmitting}
-                                className="flex items-center gap-2"
-                            >
-                                <Send size={16} />
-                                Kirim untuk Review
-                            </Button>
+                            {selectedSkp.realisasiStatus === 'Reviewed' ? (
+                                <Button
+                                    variant="gradient"
+                                    onClick={handleSubmitRealisasi}
+                                    isLoading={isSubmitting}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Send size={16} />
+                                    Simpan Perubahan & Kirim Ulang
+                                </Button>
+                            ) : (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleSaveDraft}
+                                        isLoading={isSaving}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Save size={16} />
+                                        Simpan Draft
+                                    </Button>
+                                    <Button
+                                        variant="gradient"
+                                        onClick={handleSubmitRealisasi}
+                                        isLoading={isSubmitting}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Send size={16} />
+                                        Kirim untuk Review
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     )}
                 </>

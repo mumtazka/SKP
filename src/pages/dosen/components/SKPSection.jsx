@@ -33,6 +33,7 @@ const EditorCell = ({
     onMouseDown,
     onMouseEnter,
     isSelected,
+    placeholder = 'Klik untuk mengisi...',
     // width prop is handled by colgroup usually, but we can override if needed
     colSpan = 1,
     rowSpan = 1, // NEW: rowSpan support
@@ -55,7 +56,7 @@ const EditorCell = ({
             StarterKit,
             Underline,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({ placeholder: 'Klik untuk mengisi...' }),
+            Placeholder.configure({ placeholder: placeholder }),
         ],
         content: content,
         editable: !readOnly,
@@ -173,7 +174,8 @@ const RowItem = ({
     colSpans = [],
     rowSpans = [],
     colHiddens = [],
-    displayNumber = '', // Fixed display number
+    displayNumber = '', // Fixed display number (empty for sub rows)
+    isSubRow = false, // Whether this is a sub row
     onUpdate,
     onFocus,
     onDelete,
@@ -192,7 +194,6 @@ const RowItem = ({
 }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-    const isEven = (rowIndex + 1) % 2 === 0; // Use rowIndex for striping
     const borderClass = BORDER_STYLES[borderStyle]?.class || 'border';
     const menuButtonRef = useRef(null);
 
@@ -207,11 +208,14 @@ const RowItem = ({
         setShowMenu(!showMenu);
     };
 
+    // Sub rows have slightly different styling
+    const rowBgClass = isSubRow ? 'bg-purple-50/50' : 'bg-white';
+
     return (
-        <tr className={`${borderClass} border-b border-purple-200 last:border-b-0 group transition-all ${isEven ? 'bg-white' : 'bg-purple-50/30'}`}>
-            {/* Number Column - FIXED DISPLAY */}
+        <tr className={`${borderClass} border-b border-purple-200 last:border-b-0 group transition-all ${rowBgClass}`}>
+            {/* Number Column - FIXED DISPLAY (empty for sub rows) */}
             {showNumbers && (
-                <td className={`w-10 ${borderClass} border-r border-purple-200 text-sm font-bold align-middle bg-purple-100 text-primary p-0`}>
+                <td className={`w-10 ${borderClass} border-r border-purple-200 text-sm font-bold align-middle ${isSubRow ? 'bg-purple-50' : 'bg-purple-100'} text-primary p-0`}>
                     <div className="w-10 min-h-[45px] flex items-center justify-center">
                         <span className="font-bold text-primary">{displayNumber}</span>
                     </div>
@@ -228,6 +232,7 @@ const RowItem = ({
                     colSpan={colSpans[colIndex] || 1}
                     rowSpan={rowSpans[colIndex] || 1}
                     isHidden={colHiddens.includes(colIndex)}
+                    placeholder={isSubRow ? 'isikan indikator...' : 'isikan rencana kegiatan...'}
                     onUpdate={(newHtml) => {
                         const newCols = [...columns];
                         newCols[colIndex] = newHtml;
@@ -245,27 +250,31 @@ const RowItem = ({
                 />
             ))}
 
-            {/* Row Actions */}
+            {/* Row Actions - only show on main rows, not sub rows */}
             {!readOnly && (
                 <td className="w-8 p-0 align-middle bg-gray-50/50 border-l border-purple-100">
                     <div className="w-8 min-h-[45px] flex flex-col items-center justify-center relative">
-                        <button
-                            ref={menuButtonRef}
-                            onClick={handleMenuOpen}
-                            className="p-1 text-gray-400 hover:text-primary hover:bg-purple-100 rounded transition-colors"
-                            title="Opsi Baris"
-                        >
-                            <MoreVertical size={14} />
-                        </button>
+                        {!isSubRow && (
+                            <>
+                                <button
+                                    ref={menuButtonRef}
+                                    onClick={handleMenuOpen}
+                                    className="p-1 text-gray-400 hover:text-primary hover:bg-purple-100 rounded transition-colors"
+                                    title="Opsi Baris"
+                                >
+                                    <MoreVertical size={14} />
+                                </button>
 
-                        <RowContextMenu
-                            isOpen={showMenu}
-                            onClose={() => setShowMenu(false)}
-                            onSetBorder={onSetBorder}
-                            currentBorder={borderStyle}
-                            onDelete={onDelete}
-                            position={menuPos}
-                        />
+                                <RowContextMenu
+                                    isOpen={showMenu}
+                                    onClose={() => setShowMenu(false)}
+                                    onSetBorder={onSetBorder}
+                                    currentBorder={borderStyle}
+                                    onDelete={onDelete}
+                                    position={menuPos}
+                                />
+                            </>
+                        )}
                     </div>
                 </td>
             )}
@@ -485,13 +494,53 @@ const SKPSection = ({
     // --- Existing Handlers ---
     const handleAddRow = () => {
         if (readOnly) return;
-        const newRow = {
-            id: Date.now(),
+        const timestamp = Date.now();
+        // Create main row
+        const mainRow = {
+            id: timestamp,
             columns: Array(colCount).fill(''),
             borderStyle: 'bold',
-            number: '' // NEW: Init manual number
+            isSubRow: false
         };
-        onChange([...rows, newRow]);
+        // Create sub row (linked to main row)
+        const subRow = {
+            id: timestamp + 1,
+            parentId: timestamp, // Link to main row
+            columns: Array(colCount).fill(''),
+            borderStyle: 'bold',
+            isSubRow: true
+        };
+        onChange([...rows, mainRow, subRow]);
+    };
+
+    // Delete both main and sub row together
+    const handleDeleteRow = (index) => {
+        if (readOnly) return;
+        const row = rows[index];
+
+        if (row.isSubRow) {
+            // If deleting a sub row, find and delete its parent too
+            const parentIndex = rows.findIndex(r => r.id === row.parentId);
+            if (parentIndex !== -1) {
+                const newRows = rows.filter((_, i) => i !== index && i !== parentIndex);
+                onChange(newRows);
+            } else {
+                // Just delete the sub row if parent not found
+                const newRows = rows.filter((_, i) => i !== index);
+                onChange(newRows);
+            }
+        } else {
+            // If deleting a main row, find and delete its sub row too
+            const subIndex = rows.findIndex(r => r.parentId === row.id);
+            if (subIndex !== -1) {
+                const newRows = rows.filter((_, i) => i !== index && i !== subIndex);
+                onChange(newRows);
+            } else {
+                // Just delete the main row if sub row not found
+                const newRows = rows.filter((_, i) => i !== index);
+                onChange(newRows);
+            }
+        }
     };
 
 
@@ -516,12 +565,6 @@ const SKPSection = ({
         } else {
             onChange(newRows);
         }
-    };
-
-    const handleDeleteRow = (index) => {
-        if (readOnly) return;
-        const newRows = rows.filter((_, i) => i !== index);
-        onChange(newRows);
     };
 
     const handleDeleteColumn = (colIndex) => {
@@ -620,35 +663,45 @@ const SKPSection = ({
                         </tr>
                     </thead>
                     <tbody className="bg-white">
-                        {rows.map((row, index) => (
-                            <RowItem
-                                key={row.id}
-                                rowIndex={index}
-                                displayNumber={index + 1}
-                                columns={row.columns || []}
-                                colSpans={row.colSpans || []}
-                                rowSpans={row.rowSpans || []} // Pass rowSpans
-                                colHiddens={row.colHiddens || []} // Pass hidden state
-                                onUpdate={(newCols) => {
-                                    if (readOnly) return;
-                                    const next = [...rows];
-                                    next[index] = { ...next[index], columns: newCols };
-                                    onChange(next, true); // True = isTextUpdate
-                                }}
-                                onFocus={onEditorFocus}
-                                onDelete={() => handleDeleteRow(index)}
-                                onSetBorder={(s) => handleSetRowBorder(index, s)}
-                                readOnly={readOnly}
-                                showNumbers={showNumbers}
-                                borderStyle={row.borderStyle}
-                                onRegisterEditor={handleRegisterEditor}
-                                onUnregisterEditor={handleUnregisterEditor}
-                                onCellKeyDown={handleCellKeyDown}
-                                onCellMouseDown={handleCellMouseDown}
-                                onCellMouseEnter={handleCellMouseEnter}
-                                isCellSelected={isCellSelected}
-                            />
-                        ))}
+                        {(() => {
+                            let mainRowNumber = 0;
+                            return rows.map((row, index) => {
+                                // Only increment number for main rows
+                                if (!row.isSubRow) {
+                                    mainRowNumber++;
+                                }
+                                return (
+                                    <RowItem
+                                        key={row.id}
+                                        rowIndex={index}
+                                        displayNumber={row.isSubRow ? '' : mainRowNumber}
+                                        isSubRow={row.isSubRow || false}
+                                        columns={row.columns || []}
+                                        colSpans={row.colSpans || []}
+                                        rowSpans={row.rowSpans || []}
+                                        colHiddens={row.colHiddens || []}
+                                        onUpdate={(newCols) => {
+                                            if (readOnly) return;
+                                            const next = [...rows];
+                                            next[index] = { ...next[index], columns: newCols };
+                                            onChange(next, true);
+                                        }}
+                                        onFocus={onEditorFocus}
+                                        onDelete={() => handleDeleteRow(index)}
+                                        onSetBorder={(s) => handleSetRowBorder(index, s)}
+                                        readOnly={readOnly}
+                                        showNumbers={showNumbers}
+                                        borderStyle={row.borderStyle}
+                                        onRegisterEditor={handleRegisterEditor}
+                                        onUnregisterEditor={handleUnregisterEditor}
+                                        onCellKeyDown={handleCellKeyDown}
+                                        onCellMouseDown={handleCellMouseDown}
+                                        onCellMouseEnter={handleCellMouseEnter}
+                                        isCellSelected={isCellSelected}
+                                    />
+                                );
+                            });
+                        })()}
                     </tbody>
                 </table>
             </div>

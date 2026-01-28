@@ -123,7 +123,7 @@ const ApprovedSKPList = () => {
                                         <tr><td>2. NIP</td><td>: ${skp.user?.identityNumber || '-'}</td></tr>
                                         <tr><td>3. Pangkat/Gol</td><td>: ${skp.user?.pangkat || '-'}</td></tr>
                                         <tr><td>4. Jabatan</td><td>: ${skp.user?.jabatan || '-'}</td></tr>
-                                        <tr><td>5. Unit Kerja</td><td>: ${skp.user?.departmentName || '-'}</td></tr>
+                                        <tr><td>5. Departemen</td><td>: ${skp.user?.departmentName || '-'}</td></tr>
                                     </table>
                                 </td>
                                 <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
@@ -132,7 +132,7 @@ const ApprovedSKPList = () => {
                                         <tr><td>2. NIP</td><td>: ${evaluatorNIP}</td></tr>
                                         <tr><td>3. Pangkat/Gol</td><td>: ${evaluator.pangkat || '-'}</td></tr>
                                         <tr><td>4. Jabatan</td><td>: ${evaluatorJabatan}</td></tr>
-                                        <tr><td>5. Unit Kerja</td><td>: ${evaluatorUnit}</td></tr>
+                                        <tr><td>5. Departemen</td><td>: ${evaluatorUnit}</td></tr>
                                     </table>
                                 </td>
                             </tr>

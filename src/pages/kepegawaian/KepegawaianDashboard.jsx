@@ -232,7 +232,7 @@ const KepegawaianDashboard = () => {
                         <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
                             <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <span className="text-gray-500 block text-xs uppercase tracking-wide">Unit Kerja</span>
+                                    <span className="text-gray-500 block text-xs uppercase tracking-wide">Departemen</span>
                                     <span className="font-medium text-gray-900">{selectedSkp.user?.departmentName || '-'}</span>
                                 </div>
                                 <div>
@@ -455,7 +455,7 @@ const KepegawaianDashboard = () => {
                             <thead className="bg-gray-50 text-gray-600 font-medium">
                                 <tr>
                                     <th className="px-6 py-3">Pegawai</th>
-                                    <th className="px-6 py-3">Unit Kerja</th>
+                                    <th className="px-6 py-3">Departemen</th>
                                     <th className="px-6 py-3">Periode</th>
                                     <th className="px-6 py-3">Tanggal Pengajuan</th>
                                     <th className="px-6 py-3">Status</th>

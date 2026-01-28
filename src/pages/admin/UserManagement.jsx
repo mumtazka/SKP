@@ -142,7 +142,7 @@ const UserManagement = () => {
             }
         },
         {
-            header: "Unit Kerja",
+            header: "Departemen",
             accessorKey: "department"
         },
         {
@@ -301,13 +301,13 @@ const UserManagement = () => {
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Unit Kerja</label>
+                            <label className="text-sm font-medium">Departemen</label>
                             <select
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 value={formData.departmentId}
                                 onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                             >
-                                <option value="" disabled hidden>Pilih Unit Kerja</option>
+                                <option value="" disabled hidden>Pilih Departemen</option>
                                 {departments.map(dept => (
                                     <option key={dept.id} value={dept.id}>
                                         {dept.name}

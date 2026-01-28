@@ -13,7 +13,7 @@ const MasterData = () => {
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const [formData, setFormData] = useState({ name: '', code: '', golongan: '', head: '' });
+    const [formData, setFormData] = useState({ name: '', code: '', golongan: '' });
 
     // For Department/Unit Kerja, we have extra fields like 'code' and 'head'.
     // For Pangkat, we have 'golongan'.
@@ -103,9 +103,8 @@ const MasterData = () => {
             ];
         } else {
             return [
-                { header: 'Nama Unit Kerja', accessorKey: 'name' },
+                { header: 'Nama Departemen', accessorKey: 'name' },
                 { header: 'Kode', accessorKey: 'code' },
-                { header: 'Kepala Unit', accessorKey: 'head' },
             ];
         }
     }, [activeTab]);
@@ -122,7 +121,7 @@ const MasterData = () => {
                 {[
                     { id: 'pangkat', label: 'Pangkat/Golongan', icon: Award },
                     { id: 'jabatan', label: 'Jabatan', icon: Briefcase },
-                    { id: 'unit_kerja', label: 'Unit Kerja', icon: Building2 },
+                    { id: 'unit_kerja', label: 'Departemen', icon: Building2 },
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -156,9 +155,8 @@ const MasterData = () => {
                                 {activeTab === 'pangkat' && <th className="px-6 py-3">Nama Pangkat</th>}
                                 {activeTab === 'pangkat' && <th className="px-6 py-3">Golongan</th>}
                                 {activeTab === 'jabatan' && <th className="px-6 py-3">Nama Jabatan</th>}
-                                {activeTab === 'unit_kerja' && <th className="px-6 py-3">Nama Unit</th>}
+                                {activeTab === 'unit_kerja' && <th className="px-6 py-3">Nama Departemen</th>}
                                 {activeTab === 'unit_kerja' && <th className="px-6 py-3">Kode</th>}
-                                {activeTab === 'unit_kerja' && <th className="px-6 py-3">Kepala</th>}
                                 <th className="px-6 py-3 text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -191,7 +189,6 @@ const MasterData = () => {
                                             <>
                                                 <td className="px-6 py-4 font-medium">{item.name}</td>
                                                 <td className="px-6 py-4">{item.code || '-'}</td>
-                                                <td className="px-6 py-4">{item.head || '-'}</td>
                                             </>
                                         )}
 
@@ -217,7 +214,7 @@ const MasterData = () => {
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title={`${editingItem ? 'Edit' : 'Tambah'} ${activeTab === 'pangkat' ? 'Pangkat' : activeTab === 'jabatan' ? 'Jabatan' : 'Unit Kerja'}`}
+                title={`${editingItem ? 'Edit' : 'Tambah'} ${activeTab === 'pangkat' ? 'Pangkat' : activeTab === 'jabatan' ? 'Jabatan' : 'Departemen'}`}
                 footer={
                     <>
                         <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Batal</Button>
@@ -249,26 +246,18 @@ const MasterData = () => {
                     {activeTab === 'unit_kerja' && (
                         <>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Kode Unit</label>
+                                <label className="text-sm font-medium">Kode Departemen</label>
                                 <Input
                                     value={formData.code || ''}
                                     onChange={e => setFormData({ ...formData, code: e.target.value })}
                                     placeholder="Contoh: FIK"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Kepala Unit (Nama)</label>
-                                <Input
-                                    value={formData.head || ''}
-                                    onChange={e => setFormData({ ...formData, head: e.target.value })}
-                                    placeholder="Nama Kepala Unit"
-                                />
-                            </div>
                         </>
                     )}
                 </div>
-            </Modal>
-        </div>
+            </Modal >
+        </div >
     );
 };
 

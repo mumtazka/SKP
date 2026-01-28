@@ -88,7 +88,7 @@ const SKPHeader = ({ employee, evaluator }) => {
                     <InfoRow label="NIP" value={employee?.identityNumber || '-'} />
                     <InfoRow label="Pangkat/Gol." value={employee?.pangkat || '-'} />
                     <InfoRow label="Jabatan" value={employee?.jabatan || '-'} />
-                    <InfoRow label="Unit Kerja" value={employee?.departmentName || '-'} />
+                    <InfoRow label="Departemen" value={employee?.departmentName || '-'} />
                 </div>
             </div>
 
@@ -186,7 +186,7 @@ const SKPHeader = ({ employee, evaluator }) => {
                                 Providing read-only view for context. */}
                             <div className="space-y-2 opacity-60">
                                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                    <Building2 size={14} /> Unit Kerja (Hubungi Admin untuk ubah)
+                                    <Building2 size={14} /> Departemen (Hubungi Admin untuk ubah)
                                 </label>
                                 <Input
                                     value={employee?.departmentName || ''}
@@ -229,7 +229,7 @@ const SKPHeader = ({ employee, evaluator }) => {
                     <InfoRow label="NIP" value={evaluator?.identityNumber || '-'} />
                     <InfoRow label="Pangkat/Gol." value={evaluator?.pangkat || '-'} />
                     <InfoRow label="Jabatan" value={evaluator?.jabatan || '-'} />
-                    <InfoRow label="Unit Kerja" value={evaluator?.unit || '-'} />
+                    <InfoRow label="Departemen" value={evaluator?.unit || '-'} />
                 </div>
             </div>
         </div>

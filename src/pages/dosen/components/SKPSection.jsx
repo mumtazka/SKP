@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Plus, Trash2, Columns, MessageSquare, MoreVertical, X, Grid3X3, GripVertical, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, MoreVertical, Grid3X3, GripVertical, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 
 // Border style options for individual rows
@@ -173,8 +173,7 @@ const RowItem = ({
     colSpans = [],
     rowSpans = [],
     colHiddens = [],
-    rowNumber = '', // NEW: Manual Number
-    onUpdateNumber, // NEW: Handler
+    displayNumber = '', // Fixed display number
     onUpdate,
     onFocus,
     onDelete,
@@ -210,18 +209,11 @@ const RowItem = ({
 
     return (
         <tr className={`${borderClass} border-b border-purple-200 last:border-b-0 group transition-all ${isEven ? 'bg-white' : 'bg-purple-50/30'}`}>
-            {/* Number Column - MANUAL INPUT */}
+            {/* Number Column - FIXED DISPLAY */}
             {showNumbers && (
                 <td className={`w-10 ${borderClass} border-r border-purple-200 text-sm font-bold align-middle bg-purple-100 text-primary p-0`}>
-                    <div className="w-10 min-h-[45px] flex items-center justify-center relative">
-                        <input
-                            type="text"
-                            value={rowNumber}
-                            onChange={(e) => onUpdateNumber && onUpdateNumber(e.target.value)}
-                            readOnly={readOnly}
-                            className="w-full h-full bg-transparent text-center font-bold text-primary outline-none p-1"
-                            placeholder=""
-                        />
+                    <div className="w-10 min-h-[45px] flex items-center justify-center">
+                        <span className="font-bold text-primary">{displayNumber}</span>
                     </div>
                 </td>
             )}
@@ -587,14 +579,6 @@ const SKPSection = ({
                             <Plus size={14} className="mr-1" />
                             Row
                         </Button>
-                        <Button
-                            size="sm"
-                            onClick={handleAddColumn}
-                            className="h-7 px-2.5 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white border-none shadow-sm flex items-center"
-                        >
-                            <Columns size={14} className="mr-1" />
-                            Col
-                        </Button>
                     </div>
                 )}
             </div>
@@ -624,9 +608,6 @@ const SKPSection = ({
                                 <th key={i} className="border-r border-purple-200 last:border-r-0 py-1.5 px-2 text-left relative group align-middle font-normal">
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-primary uppercase truncate">Kolom {i + 1}</span>
-                                        {!readOnly && colCount > 1 && (
-                                            <button onClick={() => handleDeleteColumn(i)} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-100 rounded ml-1"><X size={12} /></button>
-                                        )}
                                     </div>
                                     {!readOnly && i < colCount - 1 && (
                                         <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-purple-400 z-10" onMouseDown={(e) => startResize(i, e)}>
@@ -643,14 +624,7 @@ const SKPSection = ({
                             <RowItem
                                 key={row.id}
                                 rowIndex={index}
-                                // displayNumber={index + 1} // REMOVED
-                                rowNumber={row.number || ''} // NEW
-                                onUpdateNumber={(val) => {
-                                    if (readOnly) return;
-                                    const next = [...rows];
-                                    next[index] = { ...next[index], number: val };
-                                    onChange(next, true); // Treat as text update for debounce
-                                }}
+                                displayNumber={index + 1}
                                 columns={row.columns || []}
                                 colSpans={row.colSpans || []}
                                 rowSpans={row.rowSpans || []} // Pass rowSpans

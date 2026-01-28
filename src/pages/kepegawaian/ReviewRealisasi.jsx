@@ -12,8 +12,12 @@ import {
     Calendar,
     Building2,
     Send,
-    FileText
+    FileText,
+    Printer,
+    Download,
+    Lock
 } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 const ReviewRealisasi = () => {
     const { id } = useParams();
@@ -111,6 +115,61 @@ const ReviewRealisasi = () => {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+
+
+    const handleFinalize = async () => {
+        if (!skp) return;
+        if (!confirm('Apakah anda yakin ingin MEMFINALISASI SKP ini? SKP yang sudah difinalisasi tidak dapat diubah lagi.')) return;
+
+        setIsSubmitting(true);
+        try {
+            // Update same as review but set status to Approved
+            const updatedRealisasi = { ...skp.realisasi };
+            Object.keys(feedback).forEach(sectionKey => {
+                if (updatedRealisasi[sectionKey]) {
+                    feedback[sectionKey].forEach((fb, index) => {
+                        if (updatedRealisasi[sectionKey][index]) {
+                            updatedRealisasi[sectionKey][index].umpanBalik = fb.umpanBalik;
+                        }
+                    });
+                }
+            });
+
+            await api.skps.update(skp.id, {
+                realisasi: updatedRealisasi,
+                realisasiStatus: 'Approved', // Final status
+                realisasiReviewedAt: new Date().toISOString(),
+                realisasiReviewerId: user.id
+            });
+
+            toast.success('SKP berhasil difinalisasi!');
+            navigate(returnTo);
+        } catch (error) {
+            console.error('Failed to finalize:', error);
+            toast.error('Gagal memfinalisasi SKP');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDownloadPDF = () => {
+        const element = document.getElementById('print-area');
+        const opt = {
+            margin: [10, 10, 10, 10], // top, left, bottom, right
+            filename: `SKP_${skp.user.fullName}_${skp.period}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        // Hide no-print elements before generating
+        document.body.classList.add('printing-pdf');
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            document.body.classList.remove('printing-pdf');
+        });
     };
 
 
@@ -228,13 +287,22 @@ const ReviewRealisasi = () => {
                                                     rowSpan={groupRowCount}
                                                     style={{ height: '1px' }}
                                                 >
-                                                    <textarea
-                                                        value={feedback[sectionKey]?.[group.startIndex]?.umpanBalik || ''}
-                                                        onChange={(e) => handleFeedbackChange(sectionKey, group.startIndex, e.target.value)}
-                                                        placeholder="Tuliskan umpan balik..."
-                                                        className="w-full h-full p-3 border-0 bg-amber-50 focus:ring-2 focus:ring-amber-200 focus:bg-amber-50/80 outline-none text-sm resize-none block"
-                                                        style={{ minHeight: '100px' }}
-                                                    />
+                                                    {skp.realisasiStatus === 'Approved' ? (
+                                                        <div className="text-sm p-3 min-h-[100px] whitespace-pre-wrap text-gray-700 bg-gray-50/50">
+                                                            {feedback[sectionKey]?.[group.startIndex]?.umpanBalik || '-'}
+                                                        </div>
+                                                    ) : (
+                                                        <textarea
+                                                            value={feedback[sectionKey]?.[group.startIndex]?.umpanBalik || ''}
+                                                            onChange={(e) => handleFeedbackChange(sectionKey, group.startIndex, e.target.value)}
+                                                            placeholder="Tuliskan umpan balik..."
+                                                            className="w-full h-full p-3 border-0 bg-amber-50 focus:ring-2 focus:ring-amber-200 focus:bg-amber-50/80 outline-none text-sm resize-none block no-print"
+                                                            style={{ minHeight: '100px' }}
+                                                        />
+                                                    )}
+                                                    <div className="hidden print:block text-sm p-3 min-h-[100px] whitespace-pre-wrap">
+                                                        {feedback[sectionKey]?.[group.startIndex]?.umpanBalik || '-'}
+                                                    </div>
                                                 </td>
                                             )}
                                         </tr>
@@ -265,11 +333,11 @@ const ReviewRealisasi = () => {
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div id="print-area" className="max-w-6xl mx-auto space-y-6">
             {/* Back Button */}
             <button
                 onClick={() => navigate(returnTo)}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors no-print"
             >
                 <ArrowLeft size={18} />
                 <span>Kembali</span>
@@ -280,6 +348,16 @@ const ReviewRealisasi = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Review Realisasi SKP</h1>
                     <p className="text-gray-500 mt-1">Periode: {skp.period}</p>
+                </div>
+                <div className="flex gap-2 no-print">
+                    <Button
+                        variant="outline"
+                        onClick={handleDownloadPDF}
+                        className="flex items-center gap-2"
+                    >
+                        <Download size={16} />
+                        Download PDF
+                    </Button>
                 </div>
             </div>
 
@@ -321,23 +399,38 @@ const ReviewRealisasi = () => {
             </div>
 
             {/* Action Button */}
-            <div className="flex justify-end gap-4 pt-4 border-t border-gray-100">
-                <Button
-                    variant="ghost"
-                    onClick={() => navigate(returnTo)}
-                >
-                    Batal
-                </Button>
+            <div className="flex justify-end items-center pt-4 border-t border-gray-100 no-print">
+                <div className="flex gap-4">
+                    <Button
+                        variant="ghost"
+                        onClick={() => navigate(returnTo)}
+                    >
+                        {skp.realisasiStatus === 'Approved' ? 'Kembali' : 'Batal'}
+                    </Button>
 
-                <Button
-                    variant="gradient"
-                    onClick={handleSubmitReview}
-                    isLoading={isSubmitting}
-                    className="flex items-center gap-2"
-                >
-                    <CheckCircle size={16} />
-                    Setujui & Kirim Umpan Balik
-                </Button>
+                    {skp.realisasiStatus !== 'Approved' && (
+                        <>
+                            <Button
+                                variant="outline"
+                                onClick={handleSubmitReview}
+                                isLoading={isSubmitting}
+                                className="flex items-center gap-2"
+                            >
+                                <CheckCircle size={16} />
+                                Simpan & Review (Belum Final)
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleFinalize}
+                                isLoading={isSubmitting}
+                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+                            >
+                                <Lock size={16} />
+                                Setujui & Finalisasi
+                            </Button>
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );

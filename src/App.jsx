@@ -26,6 +26,7 @@ import ReviewSKP from '@/pages/kepegawaian/ReviewSKP';
 import ApprovedSKPList from '@/pages/kepegawaian/ApprovedSKPList';
 import Evaluations from '@/pages/kepegawaian/Evaluations';
 import ReviewRealisasi from '@/pages/kepegawaian/ReviewRealisasi';
+import HistorySKP from '@/pages/kepegawaian/HistorySKP';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -86,7 +87,7 @@ function App() {
                             <Route path="skp-list" element={<ApprovedSKPList />} />
                             <Route path="evaluations" element={<Evaluations />} />
                             <Route path="review-realisasi/:id" element={<ReviewRealisasi />} />
-                            <Route path="history" element={<ComingSoon title="Riwayat Pegawai" />} />
+                            <Route path="history" element={<HistorySKP />} />
                         </Route>
 
                         {/* SUPER ADMIN (Formerly Admin) */}

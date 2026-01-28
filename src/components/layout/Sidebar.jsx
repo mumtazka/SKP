@@ -34,7 +34,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
             { name: 'Persetujuan', icon: CheckSquare, path: '/kepegawaian/approvals' },
             { name: 'SKP', icon: FileText, path: '/kepegawaian/skp-list' },
             { name: 'Penilaian', icon: ClipboardList, path: '/kepegawaian/evaluations' },
-            { name: 'Riwayat Pegawai', icon: Users, path: '/kepegawaian/history' },
+            { name: 'Riwayat', icon: Users, path: '/kepegawaian/history' },
         ],
         superadmin: [
             // Superadmin gets everything + special menu

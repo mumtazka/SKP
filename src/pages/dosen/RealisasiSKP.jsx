@@ -246,11 +246,17 @@ const RealisasiSKP = () => {
         );
     };
 
+    // Check if the form should be editable
+    // It is editable if it's NOT under review (Pending + Submitted date) AND NOT fully reviewed
+    const isPendingReview = selectedSkp?.realisasiStatus === 'Pending' && selectedSkp?.realisasiSubmittedAt;
+    const isReviewed = selectedSkp?.realisasiStatus === 'Reviewed';
+    const isEditable = !isPendingReview && !isReviewed;
+
     const renderSection = (sectionKey, sectionTitle, rows) => {
         if (!rows || rows.length === 0) return null;
 
         const realisasiSection = realisasiData[sectionKey] || [];
-        const isEditable = selectedSkp?.realisasiStatus !== 'Pending';
+        // Use component-level isEditable
 
         // Group rows: numbered row starts a new group, sub-rows (no number) belong to previous group
         const groups = [];

@@ -32,6 +32,7 @@ import AdminDashboard from '@/pages/admin/AdminDashboard';
 import SuperAdminDashboard from '@/pages/admin/SuperAdminDashboard';
 import AssignRater from '@/pages/admin/AssignRater';
 import UserManagement from '@/pages/admin/UserManagement';
+import MasterData from '@/pages/admin/MasterData';
 
 // Placeholders for remaining
 const ComingSoon = ({ title }) => (
@@ -101,6 +102,7 @@ function App() {
                         <Route path="admin">
                             <Route path="dashboard" element={<AdminDashboard />} />
                             <Route path="users" element={<UserManagement />} />
+                            <Route path="master-data" element={<MasterData />} />
                             <Route path="assign" element={<AssignRater />} />
                         </Route>
                     </Route>

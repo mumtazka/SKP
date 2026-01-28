@@ -23,6 +23,7 @@ const transformUser = (user) => {
         attachments: user.attachments,
         isHomebase: user.is_homebase,
         jabatan: user.jabatan,
+        pangkat: user.pangkat,
         photo: user.photo,
         status: user.status,
         raters: user.raters,
@@ -68,6 +69,51 @@ const transformSkp = (skp) => {
 };
 
 export const api = {
+    // ==================== REFERENCES (Pangkat, Jabatan) ====================
+    references: {
+        getPangkats: async () => {
+            const { data, error } = await supabase
+                .from('pangkats')
+                .select('*')
+                .order('name');
+            if (error) throw error;
+            return data;
+        },
+        createPangkat: async (data) => {
+            const { error } = await supabase.from('pangkats').insert(data);
+            if (error) throw error;
+        },
+        updatePangkat: async (id, data) => {
+            const { error } = await supabase.from('pangkats').update(data).eq('id', id);
+            if (error) throw error;
+        },
+        deletePangkat: async (id) => {
+            const { error } = await supabase.from('pangkats').delete().eq('id', id);
+            if (error) throw error;
+        },
+
+        getJabatans: async () => {
+            const { data, error } = await supabase
+                .from('jabatans')
+                .select('*')
+                .order('name');
+            if (error) throw error;
+            return data;
+        },
+        createJabatan: async (data) => {
+            const { error } = await supabase.from('jabatans').insert(data);
+            if (error) throw error;
+        },
+        updateJabatan: async (id, data) => {
+            const { error } = await supabase.from('jabatans').update(data).eq('id', id);
+            if (error) throw error;
+        },
+        deleteJabatan: async (id) => {
+            const { error } = await supabase.from('jabatans').delete().eq('id', id);
+            if (error) throw error;
+        }
+    },
+
     // ==================== NOTIFICATIONS ====================
     notifications: {
         getAll: async (userId, role) => {
@@ -226,6 +272,8 @@ export const api = {
             if (updates.phoneNumber !== undefined) updateData.phone_number = updates.phoneNumber;
             if (updates.address !== undefined) updateData.address = updates.address;
             if (updates.photo !== undefined) updateData.photo = updates.photo;
+            if (updates.jabatan !== undefined) updateData.jabatan = updates.jabatan;
+            if (updates.pangkat !== undefined) updateData.pangkat = updates.pangkat;
 
             const { data, error } = await supabase
                 .from('users')
@@ -345,6 +393,7 @@ export const api = {
                     attachments: userData.attachments || null,
                     is_homebase: userData.isHomebase || false,
                     jabatan: userData.jabatan || null,
+                    pangkat: userData.pangkat || null,
                     photo: userData.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName)}&background=random&color=fff`,
                     status: userData.status !== undefined ? userData.status : true,
                     raters: userData.raters || null
@@ -376,6 +425,7 @@ export const api = {
             if (updates.attachments !== undefined) updateData.attachments = updates.attachments;
             if (updates.isHomebase !== undefined) updateData.is_homebase = updates.isHomebase;
             if (updates.jabatan !== undefined) updateData.jabatan = updates.jabatan;
+            if (updates.pangkat !== undefined) updateData.pangkat = updates.pangkat;
             if (updates.photo !== undefined) updateData.photo = updates.photo;
             if (updates.status !== undefined) updateData.status = updates.status;
             if (updates.raters !== undefined) updateData.raters = updates.raters;
@@ -628,6 +678,29 @@ export const api = {
                 code: d.code,
                 head: d.head
             }));
+        },
+
+        create: async (data) => {
+            const { error } = await supabase.from('departments').insert({
+                name: data.name,
+                code: data.code,
+                head: data.head
+            });
+            if (error) throw error;
+        },
+
+        update: async (id, data) => {
+            const { error } = await supabase.from('departments').update({
+                name: data.name,
+                code: data.code,
+                head: data.head
+            }).eq('id', id);
+            if (error) throw error;
+        },
+
+        delete: async (id) => {
+            const { error } = await supabase.from('departments').delete().eq('id', id);
+            if (error) throw error;
         },
 
         getById: async (id) => {

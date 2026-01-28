@@ -17,8 +17,10 @@ const UserManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [departments, setDepartments] = useState([]);
+    const [pangkatOptions, setPangkatOptions] = useState([]);
+    const [jabatanOptions, setJabatanOptions] = useState([]);
     const [formData, setFormData] = useState({
-        username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: ''
+        username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: '', pangkat: '', jabatan: ''
     });
 
     const fetchUsers = async () => {
@@ -40,7 +42,21 @@ const UserManagement = () => {
     useEffect(() => {
         fetchUsers();
         fetchDepartments();
+        fetchOptions();
     }, []);
+
+    const fetchOptions = async () => {
+        try {
+            const [pangkats, jabatans] = await Promise.all([
+                api.references.getPangkats(),
+                api.references.getJabatans()
+            ]);
+            setPangkatOptions(pangkats);
+            setJabatanOptions(jabatans);
+        } catch (err) {
+            console.error('Failed to fetch options:', err);
+        }
+    };
 
     const fetchDepartments = async () => {
         try {
@@ -65,7 +81,7 @@ const UserManagement = () => {
             }
             setIsModalOpen(false);
             setEditingUser(null);
-            setFormData({ username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: '' });
+            setFormData({ username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: '', pangkat: '', jabatan: '' });
             fetchUsers();
         } catch (err) {
             toast.error(err.message);
@@ -80,7 +96,9 @@ const UserManagement = () => {
             email: user.email,
             password: '',
             role: user.role,
-            departmentId: user.departmentId || ''
+            departmentId: user.departmentId || '',
+            pangkat: user.pangkat || '',
+            jabatan: user.jabatan || ''
         });
         setIsModalOpen(true);
     };
@@ -238,6 +256,38 @@ const UserManagement = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
+                            <label className="text-sm font-medium">Pangkat/Golongan</label>
+                            <select
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                value={formData.pangkat}
+                                onChange={(e) => setFormData({ ...formData, pangkat: e.target.value })}
+                            >
+                                <option value="">Pilih Pangkat</option>
+                                {pangkatOptions.map((opt) => (
+                                    <option key={opt.id} value={`${opt.name} (${opt.golongan})`}>
+                                        {opt.name} ({opt.golongan})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Jabatan</label>
+                            <select
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                value={formData.jabatan}
+                                onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
+                            >
+                                <option value="">Pilih Jabatan</option>
+                                {jabatanOptions.map((opt) => (
+                                    <option key={opt.id} value={opt.name}>
+                                        {opt.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
                             <label className="text-sm font-medium">Peran</label>
                             <select
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -268,7 +318,7 @@ const UserManagement = () => {
                     </div>
                 </form>
             </Modal>
-        </div>
+        </div >
     );
 };
 

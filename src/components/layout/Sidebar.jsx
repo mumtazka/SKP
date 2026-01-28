@@ -56,6 +56,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         admin: [
             { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
             { name: 'User Management', icon: Users, path: '/admin/users' },
+            { name: 'Data Master', icon: Building, path: '/admin/master-data' },
             { name: 'Assign Rater', icon: Users, path: '/admin/assign' },
         ]
     };

@@ -47,9 +47,26 @@ const Profile = () => {
     });
     const [passwordLoading, setPasswordLoading] = useState(false);
 
+    const [pangkatOptions, setPangkatOptions] = useState([]);
+    const [jabatanOptions, setJabatanOptions] = useState([]);
+
     useEffect(() => {
         loadProfile();
+        loadOptions();
     }, [user]);
+
+    const loadOptions = async () => {
+        try {
+            const [pangkats, jabatans] = await Promise.all([
+                api.references.getPangkats(),
+                api.references.getJabatans()
+            ]);
+            setPangkatOptions(pangkats);
+            setJabatanOptions(jabatans);
+        } catch (error) {
+            console.error('Failed to load options:', error);
+        }
+    };
 
     const loadProfile = async () => {
         if (!user) return;
@@ -61,7 +78,9 @@ const Profile = () => {
                 photo: data.photo || '',
                 email: data.email || '',
                 phoneNumber: data.phoneNumber || '',
-                address: data.address || ''
+                address: data.address || '',
+                pangkat: data.pangkat || '',
+                jabatan: data.jabatan || ''
             });
         } catch (error) {
             console.error('Failed to load profile:', error);
@@ -71,7 +90,9 @@ const Profile = () => {
                 photo: user.photo || '',
                 email: user.email || '',
                 phoneNumber: user.phoneNumber || '',
-                address: user.address || ''
+                address: user.address || '',
+                pangkat: user.pangkat || '',
+                jabatan: user.jabatan || ''
             });
         } finally {
             setLoading(false);
@@ -347,21 +368,54 @@ const Profile = () => {
                                 </div>
                             )}
 
+                            {/* Pangkat/Golongan */}
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-gray-100 rounded-lg">
+                                    <BadgeCheck size={18} className="text-gray-600" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm text-gray-500">Pangkat/Golongan</p>
+                                    <select
+                                        value={editForm.pangkat}
+                                        onChange={(e) => setEditForm({ ...editForm, pangkat: e.target.value })}
+                                        className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm bg-white"
+                                    >
+                                        <option value="">Select Pangkat</option>
+                                        {pangkatOptions.map((opt) => (
+                                            <option key={opt.id} value={`${opt.name} (${opt.golongan})`}>
+                                                {opt.name} ({opt.golongan})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
                             {/* Jabatan */}
                             <div className="flex items-start gap-3">
                                 <div className="p-2 bg-gray-100 rounded-lg">
                                     <Briefcase size={18} className="text-gray-600" />
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-sm text-gray-500">Jabatan</p>
-                                    <p className="font-medium text-gray-900">{data.jabatan || '-'}</p>
+                                    <select
+                                        value={editForm.jabatan}
+                                        onChange={(e) => setEditForm({ ...editForm, jabatan: e.target.value })}
+                                        className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm bg-white"
+                                    >
+                                        <option value="">Select Jabatan</option>
+                                        {jabatanOptions.map((opt) => (
+                                            <option key={opt.id} value={opt.name}>
+                                                {opt.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
                             {/* Status */}
                             <div className="flex items-start gap-3">
                                 <div className="p-2 bg-gray-100 rounded-lg">
-                                    <BadgeCheck size={18} className="text-gray-600" />
+                                    <Shield size={18} className="text-gray-600" />
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-500">Account Status</p>
@@ -379,8 +433,7 @@ const Profile = () => {
                 </div>
             </div>
 
-            {/* Security Section (Merged from Settings) - Outside the main profile card to separate it slightly visually, or could be inside. Let's put it inside a new card or just below. Instructions said merge into one menu. Let's keep it in the same flow but maybe separate card or same. Let's put it in a separate card for visual separation but same page. */}
-
+            {/* Security Section */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Lock size={20} className="text-gray-500" />

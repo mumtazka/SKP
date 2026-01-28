@@ -110,6 +110,45 @@ const ReviewRealisasi = () => {
         }
     };
 
+    const handleReject = async () => {
+        if (!skp) return;
+
+        if (!window.confirm('Apakah Anda yakin ingin menolak realisasi ini? Dosen akan dapat mengedit ulang realisasinya.')) {
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            // Clear umpanBalik from realisasi data when rejecting
+            const clearedRealisasi = { ...skp.realisasi };
+
+            Object.keys(clearedRealisasi).forEach(sectionKey => {
+                if (Array.isArray(clearedRealisasi[sectionKey])) {
+                    clearedRealisasi[sectionKey] = clearedRealisasi[sectionKey].map(row => ({
+                        ...row,
+                        umpanBalik: '' // Clear feedback
+                    }));
+                }
+            });
+
+            await api.skps.update(skp.id, {
+                realisasi: clearedRealisasi,
+                realisasiStatus: null, // Reset to allow re-editing
+                realisasiSubmittedAt: null,
+                realisasiReviewedAt: null,
+                realisasiReviewerId: null
+            });
+
+            toast.success('Realisasi ditolak. Dosen dapat mengedit ulang.');
+            navigate(returnTo);
+        } catch (error) {
+            console.error('Failed to reject:', error);
+            toast.error('Gagal menolak realisasi');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const renderSection = (sectionKey, sectionTitle, planRows, realisasiRows) => {
         if (!planRows || planRows.length === 0) return null;
 
@@ -261,13 +300,21 @@ const ReviewRealisasi = () => {
                     Batal
                 </Button>
                 <Button
+                    variant="outline"
+                    onClick={handleReject}
+                    isLoading={isSubmitting}
+                    className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                    Tolak & Kembalikan
+                </Button>
+                <Button
                     variant="gradient"
                     onClick={handleSubmitReview}
                     isLoading={isSubmitting}
                     className="flex items-center gap-2"
                 >
                     <CheckCircle size={16} />
-                    Kirim Umpan Balik
+                    Setujui & Kirim Umpan Balik
                 </Button>
             </div>
         </div>

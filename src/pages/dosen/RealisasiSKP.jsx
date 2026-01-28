@@ -252,6 +252,35 @@ const RealisasiSKP = () => {
         const realisasiSection = realisasiData[sectionKey] || [];
         const isEditable = selectedSkp?.realisasiStatus !== 'Pending';
 
+        // Group rows: numbered row starts a new group, sub-rows (no number) belong to previous group
+        const groups = [];
+        let currentGroup = null;
+
+        rows.forEach((row, index) => {
+            const hasNumber = row.number && row.number.trim() !== '';
+
+            if (hasNumber) {
+                // Start a new group
+                currentGroup = {
+                    number: row.number,
+                    rows: [{ ...row, originalIndex: index }],
+                    startIndex: index
+                };
+                groups.push(currentGroup);
+            } else if (currentGroup) {
+                // Add to current group (sub-row)
+                currentGroup.rows.push({ ...row, originalIndex: index });
+            } else {
+                // No current group yet (edge case: first row has no number)
+                currentGroup = {
+                    number: '',
+                    rows: [{ ...row, originalIndex: index }],
+                    startIndex: index
+                };
+                groups.push(currentGroup);
+            }
+        });
+
         return (
             <div key={sectionKey} className="mb-6">
                 {/* Section Header */}
@@ -277,56 +306,80 @@ const RealisasiSKP = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((row, index) => {
-                                const realisasiRow = realisasiSection[index] || {};
-                                const planContent = row.columns?.[0] || '';
-                                const rowNum = row.number || (index + 1);
+                            {groups.map((group, groupIndex) => {
+                                const groupRowCount = group.rows.length;
+                                const realisasiRow = realisasiSection[group.startIndex] || {};
 
-                                return (
-                                    <tr key={row.id || index} className="border-b border-blue-200 hover:bg-blue-50/30 transition-colors">
-                                        {/* Number */}
-                                        <td className="border-r border-blue-200 py-2 px-2 text-center align-top">
-                                            <span className="text-sm font-bold text-blue-700">{rowNum}</span>
-                                        </td>
+                                return group.rows.map((row, rowInGroup) => {
+                                    const isFirstInGroup = rowInGroup === 0;
+                                    const planContent = row.columns?.[0] || '';
 
-                                        {/* Plan Content */}
-                                        <td className="border-r border-blue-200 p-0 align-top">
-                                            <div
-                                                className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[80px]"
-                                                dangerouslySetInnerHTML={{ __html: planContent }}
-                                            />
-                                        </td>
-
-                                        {/* Realization */}
-                                        <td className="border-r border-blue-200 p-0 align-top">
-                                            {isEditable ? (
-                                                <SimpleEditor
-                                                    content={realisasiRow.realisasi || ''}
-                                                    onUpdate={(html) => handleRealisasiChange(sectionKey, index, html)}
-                                                    onFocus={(editor) => setActiveEditor(editor)}
-                                                    placeholder="Tuliskan realisasi..."
-                                                />
-                                            ) : (
-                                                <div className="p-3 text-sm text-gray-700 min-h-[80px] bg-gray-50">
-                                                    {realisasiRow.realisasi || <span className="text-gray-400 italic">-</span>}
-                                                </div>
+                                    return (
+                                        <tr
+                                            key={row.id || row.originalIndex}
+                                            className={`border-b border-blue-200 hover:bg-blue-50/30 transition-colors ${rowInGroup > 0 ? 'bg-blue-50/20' : ''}`}
+                                        >
+                                            {/* Number - Only show for first row in group, with rowSpan */}
+                                            {isFirstInGroup && (
+                                                <td
+                                                    className="border-r border-blue-200 py-2 px-2 text-center align-top bg-blue-50"
+                                                    rowSpan={groupRowCount}
+                                                >
+                                                    {group.number && (
+                                                        <span className="text-sm font-bold text-blue-700">{group.number}</span>
+                                                    )}
+                                                </td>
                                             )}
-                                        </td>
 
-                                        {/* Feedback */}
-                                        <td className="p-0 align-top">
-                                            <div className="p-3 min-h-[80px]">
-                                                {realisasiRow.umpanBalik ? (
-                                                    <div className="text-sm text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
-                                                        {realisasiRow.umpanBalik}
+                                            {/* Plan Content - Each row has its own content */}
+                                            <td className="border-r border-blue-200 p-0 align-top">
+                                                <div
+                                                    className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px]"
+                                                    dangerouslySetInnerHTML={{ __html: planContent }}
+                                                />
+                                            </td>
+
+                                            {/* Realization - Only first row in group, with rowSpan */}
+                                            {isFirstInGroup && (
+                                                <td
+                                                    className="border-r border-blue-200 p-0 align-top"
+                                                    rowSpan={groupRowCount}
+                                                >
+                                                    {isEditable ? (
+                                                        <SimpleEditor
+                                                            content={realisasiRow.realisasi || ''}
+                                                            onUpdate={(html) => handleRealisasiChange(sectionKey, group.startIndex, html)}
+                                                            onFocus={(editor) => setActiveEditor(editor)}
+                                                            placeholder="Tuliskan realisasi..."
+                                                        />
+                                                    ) : (
+                                                        <div className="p-3 text-sm text-gray-700 min-h-[80px] bg-gray-50">
+                                                            {realisasiRow.realisasi || <span className="text-gray-400 italic">-</span>}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            )}
+
+                                            {/* Feedback - Only first row in group, with rowSpan */}
+                                            {isFirstInGroup && (
+                                                <td
+                                                    className="p-0 align-top"
+                                                    rowSpan={groupRowCount}
+                                                >
+                                                    <div className="p-3 min-h-[80px]">
+                                                        {realisasiRow.umpanBalik ? (
+                                                            <div className="text-sm text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
+                                                                {realisasiRow.umpanBalik}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-400 text-sm italic">Belum ada umpan balik</span>
+                                                        )}
                                                     </div>
-                                                ) : (
-                                                    <span className="text-gray-400 text-sm italic">Belum ada umpan balik</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
+                                                </td>
+                                            )}
+                                        </tr>
+                                    );
+                                });
                             })}
                         </tbody>
                     </table>

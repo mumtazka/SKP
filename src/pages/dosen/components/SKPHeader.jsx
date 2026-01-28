@@ -131,36 +131,52 @@ const SKPHeader = ({ employee, evaluator }) => {
                                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                     <Award size={14} /> Pangkat/Golongan
                                 </label>
-                                <select
-                                    value={formData.pangkat}
-                                    onChange={(e) => setFormData({ ...formData, pangkat: e.target.value })}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                >
-                                    <option value="">Pilih Pangkat/Golongan</option>
-                                    {pangkatOptions.map((opt) => (
-                                        <option key={opt.id} value={`${opt.name} (${opt.golongan})`}>
-                                            {opt.name} ({opt.golongan})
-                                        </option>
-                                    ))}
-                                </select>
+                                {pangkatOptions.length > 0 ? (
+                                    <select
+                                        value={formData.pangkat}
+                                        onChange={(e) => setFormData({ ...formData, pangkat: e.target.value })}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    >
+                                        <option value="">Pilih Pangkat/Golongan</option>
+                                        {pangkatOptions.map((opt) => (
+                                            <option key={opt.id} value={`${opt.name} (${opt.golongan})`}>
+                                                {opt.name} ({opt.golongan})
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <Input
+                                        value={formData.pangkat}
+                                        onChange={(e) => setFormData({ ...formData, pangkat: e.target.value })}
+                                        placeholder="Ketik Pangkat/Golongan (Contoh: Penata Muda III/a)"
+                                    />
+                                )}
                             </div>
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                     <Briefcase size={14} /> Jabatan
                                 </label>
-                                <select
-                                    value={formData.jabatan}
-                                    onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                >
-                                    <option value="">Pilih Jabatan</option>
-                                    {jabatanOptions.map((opt) => (
-                                        <option key={opt.id} value={opt.name}>
-                                            {opt.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                {jabatanOptions.length > 0 ? (
+                                    <select
+                                        value={formData.jabatan}
+                                        onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    >
+                                        <option value="">Pilih Jabatan</option>
+                                        {jabatanOptions.map((opt) => (
+                                            <option key={opt.id} value={opt.name}>
+                                                {opt.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <Input
+                                        value={formData.jabatan}
+                                        onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
+                                        placeholder="Ketik Jabatan (Contoh: Lektor)"
+                                    />
+                                )}
                             </div>
 
                             {/* Unit Kerja usually managed by admin/department relation, typically not direct edit here unless we want to allow text override. 

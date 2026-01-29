@@ -419,9 +419,16 @@ const SKPSection = ({
         }
     }, [isActiveSection]);
 
+    // Use ref for onSelectionChange to prevent infinite loops when parent's handler changes
+    const onSelectionChangeRef = useRef(onSelectionChange);
+    useEffect(() => {
+        onSelectionChangeRef.current = onSelectionChange;
+    }, [onSelectionChange]);
+
     // Report selected editors to parent whenever selection changes
     useEffect(() => {
-        if (!onSelectionChange) return;
+        const handler = onSelectionChangeRef.current;
+        if (!handler) return;
 
         if (selectionStart && selectionEnd) {
             const r1 = Math.min(selectionStart.r, selectionEnd.r);
@@ -437,11 +444,11 @@ const SKPSection = ({
                     if (editor) selectedEds.push(editor);
                 }
             }
-            onSelectionChange(selectedEds, { start: { r: r1, c: c1 }, end: { r: r2, c: c2 } });
+            handler(selectedEds, { start: { r: r1, c: c1 }, end: { r: r2, c: c2 } });
         } else {
-            onSelectionChange([], null);
+            handler([], null);
         }
-    }, [selectionStart, selectionEnd, onSelectionChange]);
+    }, [selectionStart, selectionEnd]);
 
 
     const handleRegisterEditor = useCallback((r, c, editor) => {

@@ -285,13 +285,31 @@ const SubmitSKP = () => {
 
     const handleConfirmSubmit = async () => {
         if (!effectiveUser || isReadOnly) return;
+
+        // Ensure evaluator exists
+        const evaluatorId = evaluator?.id || effectiveUser.raters?.pejabatPenilaiId;
+        if (!evaluatorId) {
+            toast.error("Gagal mengajukan: Anda belum memiliki Pejabat Penilai assigned. Silakan hubungi admin.");
+            setShowConfirm(false);
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const payload = {
                 userId: effectiveUser.id,
+                evaluatorId: evaluatorId,
                 period: currentYear,
                 details: data,
-                status: 'Pending'
+                status: 'Pending',
+                // Required fields for DB constraints (using defaults as these are detailed in JSONB)
+                activity: `Rencana SKP ${currentYear}`,
+                category: 'Kinerja Utama',
+                target: 100,
+                objectives: '-',
+                output: '-',
+                startDate: `${currentYear}-01-01`,
+                endDate: `${currentYear}-12-31`
             };
             if (existingSkpId) {
                 await api.skps.update(existingSkpId, payload);
@@ -310,6 +328,17 @@ const SubmitSKP = () => {
             setIsSubmitting(false);
         }
     };
+
+    // Callback to prevent infinite loop
+    const handleSelectionChange = useCallback((section, editors, range) => {
+        if (activeSection === section) {
+            // Only update if different to prevent loop
+            if (selectedEditors !== editors || selectionRange !== range) {
+                setSelectedEditors(editors);
+                setSelectionRange(range);
+            }
+        }
+    }, [activeSection, selectedEditors, selectionRange]);
 
     return (
         <div className="max-w-7xl mx-auto pb-20">
@@ -466,12 +495,7 @@ const SubmitSKP = () => {
                 readOnly={isReadOnly}
                 isActiveSection={activeSection === 'utama'}
                 onSectionActive={() => setActiveSection('utama')}
-                onSelectionChange={(editors, range) => {
-                    if (activeSection === 'utama') {
-                        setSelectedEditors(editors);
-                        setSelectionRange(range);
-                    }
-                }}
+                onSelectionChange={(editors, range) => handleSelectionChange('utama', editors, range)}
             />
 
             <SKPSection
@@ -483,12 +507,7 @@ const SubmitSKP = () => {
                 readOnly={isReadOnly}
                 isActiveSection={activeSection === 'tambahan'}
                 onSectionActive={() => setActiveSection('tambahan')}
-                onSelectionChange={(editors, range) => {
-                    if (activeSection === 'tambahan') {
-                        setSelectedEditors(editors);
-                        setSelectionRange(range);
-                    }
-                }}
+                onSelectionChange={(editors, range) => handleSelectionChange('tambahan', editors, range)}
             />
 
             {/* SECTION 3: LAMPIRAN */}
@@ -505,12 +524,7 @@ const SubmitSKP = () => {
                     readOnly={isReadOnly}
                     isActiveSection={activeSection === 'dukungan'}
                     onSectionActive={() => setActiveSection('dukungan')}
-                    onSelectionChange={(editors, range) => {
-                        if (activeSection === 'dukungan') {
-                            setSelectedEditors(editors);
-                            setSelectionRange(range);
-                        }
-                    }}
+                    onSelectionChange={(editors, range) => handleSelectionChange('dukungan', editors, range)}
                     columnHeaders={['Dukungan Sumber Daya']}
                     showNumbers={true}
                     simpleRow={true}
@@ -528,12 +542,7 @@ const SubmitSKP = () => {
                     readOnly={isReadOnly}
                     isActiveSection={activeSection === 'skema'}
                     onSectionActive={() => setActiveSection('skema')}
-                    onSelectionChange={(editors, range) => {
-                        if (activeSection === 'skema') {
-                            setSelectedEditors(editors);
-                            setSelectionRange(range);
-                        }
-                    }}
+                    onSelectionChange={(editors, range) => handleSelectionChange('skema', editors, range)}
                     columnHeaders={['Skema Pertanggungjawaban']}
                     showNumbers={true}
                     simpleRow={true}
@@ -551,12 +560,7 @@ const SubmitSKP = () => {
                     readOnly={isReadOnly}
                     isActiveSection={activeSection === 'konsekuensi'}
                     onSectionActive={() => setActiveSection('konsekuensi')}
-                    onSelectionChange={(editors, range) => {
-                        if (activeSection === 'konsekuensi') {
-                            setSelectedEditors(editors);
-                            setSelectionRange(range);
-                        }
-                    }}
+                    onSelectionChange={(editors, range) => handleSelectionChange('konsekuensi', editors, range)}
                     columnHeaders={['Konsekuensi']}
                     showNumbers={true}
                     simpleRow={true}

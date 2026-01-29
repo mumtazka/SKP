@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Plus, Trash2, Columns, MessageSquare, MoreVertical, X, Grid3X3, GripVertical, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, MoreVertical, Grid3X3, GripVertical, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 
 // Border style options for individual rows
@@ -33,6 +33,7 @@ const EditorCell = ({
     onMouseDown,
     onMouseEnter,
     isSelected,
+    placeholder = 'Klik untuk mengisi...',
     // width prop is handled by colgroup usually, but we can override if needed
     colSpan = 1,
     rowSpan = 1, // NEW: rowSpan support
@@ -55,7 +56,7 @@ const EditorCell = ({
             StarterKit,
             Underline,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({ placeholder: 'Klik untuk mengisi...' }),
+            Placeholder.configure({ placeholder: placeholder }),
         ],
         content: content,
         editable: !readOnly,
@@ -173,8 +174,8 @@ const RowItem = ({
     colSpans = [],
     rowSpans = [],
     colHiddens = [],
-    rowNumber = '', // NEW: Manual Number
-    onUpdateNumber, // NEW: Handler
+    displayNumber = '', // Fixed display number (empty for sub rows)
+    isSubRow = false, // Whether this is a sub row
     onUpdate,
     onFocus,
     onDelete,
@@ -193,7 +194,6 @@ const RowItem = ({
 }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-    const isEven = (rowIndex + 1) % 2 === 0; // Use rowIndex for striping
     const borderClass = BORDER_STYLES[borderStyle]?.class || 'border';
     const menuButtonRef = useRef(null);
 
@@ -208,20 +208,16 @@ const RowItem = ({
         setShowMenu(!showMenu);
     };
 
+    // Sub rows have slightly different styling
+    const rowBgClass = isSubRow ? 'bg-purple-50/50' : 'bg-white';
+
     return (
-        <tr className={`${borderClass} border-b border-purple-200 last:border-b-0 group transition-all ${isEven ? 'bg-white' : 'bg-purple-50/30'}`}>
-            {/* Number Column - MANUAL INPUT */}
+        <tr className={`${borderClass} border-b border-purple-200 last:border-b-0 group transition-all ${rowBgClass}`}>
+            {/* Number Column - FIXED DISPLAY (empty for sub rows) */}
             {showNumbers && (
-                <td className={`w-10 ${borderClass} border-r border-purple-200 text-sm font-bold align-middle bg-purple-100 text-primary p-0`}>
-                    <div className="w-10 min-h-[45px] flex items-center justify-center relative">
-                        <input
-                            type="text"
-                            value={rowNumber}
-                            onChange={(e) => onUpdateNumber && onUpdateNumber(e.target.value)}
-                            readOnly={readOnly}
-                            className="w-full h-full bg-transparent text-center font-bold text-primary outline-none p-1"
-                            placeholder=""
-                        />
+                <td className={`w-10 ${borderClass} border-r border-purple-200 text-sm font-bold align-middle ${isSubRow ? 'bg-purple-50' : 'bg-purple-100'} text-primary p-0`}>
+                    <div className="w-10 min-h-[45px] flex items-center justify-center">
+                        <span className="font-bold text-primary">{displayNumber}</span>
                     </div>
                 </td>
             )}
@@ -236,6 +232,7 @@ const RowItem = ({
                     colSpan={colSpans[colIndex] || 1}
                     rowSpan={rowSpans[colIndex] || 1}
                     isHidden={colHiddens.includes(colIndex)}
+                    placeholder={isSubRow ? 'isikan indikator...' : 'isikan rencana kegiatan...'}
                     onUpdate={(newHtml) => {
                         const newCols = [...columns];
                         newCols[colIndex] = newHtml;
@@ -253,27 +250,31 @@ const RowItem = ({
                 />
             ))}
 
-            {/* Row Actions */}
+            {/* Row Actions - only show on main rows, not sub rows */}
             {!readOnly && (
                 <td className="w-8 p-0 align-middle bg-gray-50/50 border-l border-purple-100">
                     <div className="w-8 min-h-[45px] flex flex-col items-center justify-center relative">
-                        <button
-                            ref={menuButtonRef}
-                            onClick={handleMenuOpen}
-                            className="p-1 text-gray-400 hover:text-primary hover:bg-purple-100 rounded transition-colors"
-                            title="Opsi Baris"
-                        >
-                            <MoreVertical size={14} />
-                        </button>
+                        {!isSubRow && (
+                            <>
+                                <button
+                                    ref={menuButtonRef}
+                                    onClick={handleMenuOpen}
+                                    className="p-1 text-gray-400 hover:text-primary hover:bg-purple-100 rounded transition-colors"
+                                    title="Opsi Baris"
+                                >
+                                    <MoreVertical size={14} />
+                                </button>
 
-                        <RowContextMenu
-                            isOpen={showMenu}
-                            onClose={() => setShowMenu(false)}
-                            onSetBorder={onSetBorder}
-                            currentBorder={borderStyle}
-                            onDelete={onDelete}
-                            position={menuPos}
-                        />
+                                <RowContextMenu
+                                    isOpen={showMenu}
+                                    onClose={() => setShowMenu(false)}
+                                    onSetBorder={onSetBorder}
+                                    currentBorder={borderStyle}
+                                    onDelete={onDelete}
+                                    position={menuPos}
+                                />
+                            </>
+                        )}
                     </div>
                 </td>
             )}
@@ -493,13 +494,53 @@ const SKPSection = ({
     // --- Existing Handlers ---
     const handleAddRow = () => {
         if (readOnly) return;
-        const newRow = {
-            id: Date.now(),
+        const timestamp = Date.now();
+        // Create main row
+        const mainRow = {
+            id: timestamp,
             columns: Array(colCount).fill(''),
             borderStyle: 'bold',
-            number: '' // NEW: Init manual number
+            isSubRow: false
         };
-        onChange([...rows, newRow]);
+        // Create sub row (linked to main row)
+        const subRow = {
+            id: timestamp + 1,
+            parentId: timestamp, // Link to main row
+            columns: Array(colCount).fill(''),
+            borderStyle: 'bold',
+            isSubRow: true
+        };
+        onChange([...rows, mainRow, subRow]);
+    };
+
+    // Delete both main and sub row together
+    const handleDeleteRow = (index) => {
+        if (readOnly) return;
+        const row = rows[index];
+
+        if (row.isSubRow) {
+            // If deleting a sub row, find and delete its parent too
+            const parentIndex = rows.findIndex(r => r.id === row.parentId);
+            if (parentIndex !== -1) {
+                const newRows = rows.filter((_, i) => i !== index && i !== parentIndex);
+                onChange(newRows);
+            } else {
+                // Just delete the sub row if parent not found
+                const newRows = rows.filter((_, i) => i !== index);
+                onChange(newRows);
+            }
+        } else {
+            // If deleting a main row, find and delete its sub row too
+            const subIndex = rows.findIndex(r => r.parentId === row.id);
+            if (subIndex !== -1) {
+                const newRows = rows.filter((_, i) => i !== index && i !== subIndex);
+                onChange(newRows);
+            } else {
+                // Just delete the main row if sub row not found
+                const newRows = rows.filter((_, i) => i !== index);
+                onChange(newRows);
+            }
+        }
     };
 
 
@@ -524,12 +565,6 @@ const SKPSection = ({
         } else {
             onChange(newRows);
         }
-    };
-
-    const handleDeleteRow = (index) => {
-        if (readOnly) return;
-        const newRows = rows.filter((_, i) => i !== index);
-        onChange(newRows);
     };
 
     const handleDeleteColumn = (colIndex) => {
@@ -587,14 +622,6 @@ const SKPSection = ({
                             <Plus size={14} className="mr-1" />
                             Row
                         </Button>
-                        <Button
-                            size="sm"
-                            onClick={handleAddColumn}
-                            className="h-7 px-2.5 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white border-none shadow-sm flex items-center"
-                        >
-                            <Columns size={14} className="mr-1" />
-                            Col
-                        </Button>
                     </div>
                 )}
             </div>
@@ -624,9 +651,6 @@ const SKPSection = ({
                                 <th key={i} className="border-r border-purple-200 last:border-r-0 py-1.5 px-2 text-left relative group align-middle font-normal">
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-primary uppercase truncate">Kolom {i + 1}</span>
-                                        {!readOnly && colCount > 1 && (
-                                            <button onClick={() => handleDeleteColumn(i)} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-100 rounded ml-1"><X size={12} /></button>
-                                        )}
                                     </div>
                                     {!readOnly && i < colCount - 1 && (
                                         <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-purple-400 z-10" onMouseDown={(e) => startResize(i, e)}>
@@ -639,42 +663,45 @@ const SKPSection = ({
                         </tr>
                     </thead>
                     <tbody className="bg-white">
-                        {rows.map((row, index) => (
-                            <RowItem
-                                key={row.id}
-                                rowIndex={index}
-                                // displayNumber={index + 1} // REMOVED
-                                rowNumber={row.number || ''} // NEW
-                                onUpdateNumber={(val) => {
-                                    if (readOnly) return;
-                                    const next = [...rows];
-                                    next[index] = { ...next[index], number: val };
-                                    onChange(next, true); // Treat as text update for debounce
-                                }}
-                                columns={row.columns || []}
-                                colSpans={row.colSpans || []}
-                                rowSpans={row.rowSpans || []} // Pass rowSpans
-                                colHiddens={row.colHiddens || []} // Pass hidden state
-                                onUpdate={(newCols) => {
-                                    if (readOnly) return;
-                                    const next = [...rows];
-                                    next[index] = { ...next[index], columns: newCols };
-                                    onChange(next, true); // True = isTextUpdate
-                                }}
-                                onFocus={onEditorFocus}
-                                onDelete={() => handleDeleteRow(index)}
-                                onSetBorder={(s) => handleSetRowBorder(index, s)}
-                                readOnly={readOnly}
-                                showNumbers={showNumbers}
-                                borderStyle={row.borderStyle}
-                                onRegisterEditor={handleRegisterEditor}
-                                onUnregisterEditor={handleUnregisterEditor}
-                                onCellKeyDown={handleCellKeyDown}
-                                onCellMouseDown={handleCellMouseDown}
-                                onCellMouseEnter={handleCellMouseEnter}
-                                isCellSelected={isCellSelected}
-                            />
-                        ))}
+                        {(() => {
+                            let mainRowNumber = 0;
+                            return rows.map((row, index) => {
+                                // Only increment number for main rows
+                                if (!row.isSubRow) {
+                                    mainRowNumber++;
+                                }
+                                return (
+                                    <RowItem
+                                        key={row.id}
+                                        rowIndex={index}
+                                        displayNumber={row.isSubRow ? '' : mainRowNumber}
+                                        isSubRow={row.isSubRow || false}
+                                        columns={row.columns || []}
+                                        colSpans={row.colSpans || []}
+                                        rowSpans={row.rowSpans || []}
+                                        colHiddens={row.colHiddens || []}
+                                        onUpdate={(newCols) => {
+                                            if (readOnly) return;
+                                            const next = [...rows];
+                                            next[index] = { ...next[index], columns: newCols };
+                                            onChange(next, true);
+                                        }}
+                                        onFocus={onEditorFocus}
+                                        onDelete={() => handleDeleteRow(index)}
+                                        onSetBorder={(s) => handleSetRowBorder(index, s)}
+                                        readOnly={readOnly}
+                                        showNumbers={showNumbers}
+                                        borderStyle={row.borderStyle}
+                                        onRegisterEditor={handleRegisterEditor}
+                                        onUnregisterEditor={handleUnregisterEditor}
+                                        onCellKeyDown={handleCellKeyDown}
+                                        onCellMouseDown={handleCellMouseDown}
+                                        onCellMouseEnter={handleCellMouseEnter}
+                                        isCellSelected={isCellSelected}
+                                    />
+                                );
+                            });
+                        })()}
                     </tbody>
                 </table>
             </div>

@@ -22,10 +22,12 @@ import {
     AlertTriangle,
     ThumbsUp,
     ChevronDown,
-    X
+    X,
+    Save
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import SKPSection from '../dosen/components/SKPSection';
+import { useSkpDraft } from '@/hooks/useSkpDraft';
 import Toolbar from '@/pages/dosen/components/Toolbar';
 
 const RATING_OPTIONS = [
@@ -71,6 +73,11 @@ const RATING_OPTIONS = [
     },
 ];
 
+const INITIAL_PERILAKU = [
+    { id: 1, columns: ['', ''], isSubRow: false, rowSpans: [1, 2] },
+    { id: 2, columns: ['', ''], isSubRow: true, parentId: 1, colHiddens: [1] }
+];
+
 const ReviewRealisasi = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -82,8 +89,12 @@ const ReviewRealisasi = () => {
     const [feedback, setFeedback] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Perilaku Kerja State (Dynamic Rows)
-    const [perilakuRows, setPerilakuRows] = useState([]);
+    // Draft Logic for Perilaku Kerja - Scoped by SKP ID
+    const {
+        data: perilakuRows,
+        setData: setPerilakuRows,
+        clearDraft
+    } = useSkpDraft(INITIAL_PERILAKU, id); // Pass id as unique key
 
     const [activeEditor, setActiveEditor] = useState(null);
     const [activeSection, setActiveSection] = useState(null); // Track active section for Toolbar context
@@ -126,17 +137,39 @@ const ReviewRealisasi = () => {
             }
             setFeedback(existingFeedback);
 
-            // Initialize Perilaku Data
-            // If empty, set default structure: 1 Main Row + 1 Sub Row (2 Pairs hardcoded for ease?)
-            // Or just one pair.
-            let initialPerilaku = data.perilaku;
-            if (!initialPerilaku || !Array.isArray(initialPerilaku) || initialPerilaku.length === 0) {
-                initialPerilaku = [
-                    { id: 1, columns: ['', ''], isSubRow: false, rowSpans: [1, 2] },
-                    { id: 2, columns: ['', ''], isSubRow: true, parentId: 1, colHiddens: [1] }
-                ];
+            // Initialize Perilaku Data:
+            // Only overwrite draft if draft is in default initial state? 
+            // Better strategy: If the DB has saved Perilaku data, we should trust it, UNLESS the user has a local draft that is newer?
+            // Since we can't easily know which is newer without timestamps, we'll favor the Draft if it exists and is different from Initial.
+            // But simple approach: If DB has data, load it into the draft state (updating local storage too).
+
+            // However, the requirement is "Buat storage sementara (draft)".
+            // If the user navigates away and comes back, they want their typed text.
+            // If they reload, useSkpDraft already loaded from localStorage.
+
+            // So, IF we have DB data, we should set it ONLY IF the draft is "empty" or "default".
+            // Or maybe just populate if we haven't touched it yet.
+            // Let's assume if localStorage has data (loaded by hook), we keep it.
+            // But how do we know if the hook loaded meaningful data?
+
+            // We can check if `perilakuRows` matches `INITIAL_PERILAKU` (deep check).
+            // Actually, `useSkpDraft` initializes `data` state inside.
+            // We should just check if we need to hydrate from DB.
+
+            if (data.perilaku && Array.isArray(data.perilaku) && data.perilaku.length > 0) {
+                // Check if current draft is just the default placeholder
+                const isDefault = JSON.stringify(perilakuRows) === JSON.stringify(INITIAL_PERILAKU);
+                // Also checking if the hook has already loaded saved data is tricky synchronously here.
+                // But since `perilakuRows` comes from the hook which ran its effect, it might be stale or updated.
+                // Let's update it if DB has data. But this might overwrite local draft if we aren't careful.
+
+                // SAFE APPROACH: If `perilakuRows` is exactly the Initial Default, AND DB has data, use DB data.
+                // Otherwise assume local draft is what the user wants (either empty or work in progress).
+
+                if (isDefault) {
+                    setPerilakuRows(data.perilaku);
+                }
             }
-            setPerilakuRows(initialPerilaku);
 
         } catch (error) {
             console.error('Failed to load SKP:', error);
@@ -191,6 +224,8 @@ const ReviewRealisasi = () => {
                 realisasiReviewerId: user.id
             });
 
+            clearDraft(); // Clear draft after successful save
+
             toast.success('Review berhasil dikirim!');
             navigate(returnTo);
         } catch (error) {
@@ -232,6 +267,8 @@ const ReviewRealisasi = () => {
                 evaluatorId: user.id
             });
 
+            clearDraft(); // Clear draft after finalization
+
             toast.success('SKP berhasil difinalisasi!');
             setShowFinalDialog(false);
             navigate(returnTo);
@@ -244,16 +281,19 @@ const ReviewRealisasi = () => {
         }
     };
 
+
+
     const handleDownloadPDF = () => {
         if (!skp) return;
 
         // Evaluator Data
-        const evaluator = skp.evaluator || {};
-        const evaluatorName = evaluator.fullName || "_______________________";
-        const evaluatorNIP = evaluator.identityNumber || "...................";
-        const evaluatorJabatan = evaluator.jabatan || "Pejabat Penilai Kinerja";
-        const evaluatorPangkat = evaluator.pangkat || "-";
-        const evaluatorUnit = evaluator.departmentName || "-";
+        // Evaluator Data
+        const evaluatorSource = skp.evaluator?.fullName ? skp.evaluator : (isReviewer ? user : {});
+        const evaluatorName = evaluatorSource.fullName || "_______________________";
+        const evaluatorNIP = evaluatorSource.identityNumber || "...................";
+        const evaluatorJabatan = evaluatorSource.jabatan || "Pejabat Penilai Kinerja";
+        const evaluatorPangkat = evaluatorSource.pangkat || "-";
+        const evaluatorUnit = evaluatorSource.departmentName || "-";
 
         // Helper to strip HTML tags
         const stripHtml = (html) => {
@@ -310,6 +350,70 @@ const ReviewRealisasi = () => {
                     </tr>
                 `;
             }).join('');
+        };
+
+        // Helper to render Perilaku Kerja rows
+        const renderPerilakuRows = (rows) => {
+            if (!rows || rows.length === 0) {
+                return '<tr><td colspan="3" style="text-align: center; padding: 12px; font-style: italic; color: #666;">Tidak ada data perilaku kerja</td></tr>';
+            }
+
+            // We need to group rows to calculate rowspans for the number column if we want it strictly per group, 
+            // but the editor structure already defines main/sub rows.
+            // HTML table structure:
+            // Col 1: No (Main Row only)
+            // Col 2: Perilaku Kerja (Main) / Indikator (Sub)
+            // Col 3: Ekspektasi (Merged across Main+Sub)
+
+            let html = '';
+            let mainRowNumber = 0;
+
+            // We iterate normally. If it's a sub-row, we handle it. 
+            // However, the Editor "Main Row" has rowspan=2 for Ekspektasi.
+            // But in the editor, we might have multiple sub-rows or variable structure if user edited it.
+            // Let's rely on the 'isSubRow' flag.
+
+            // For PDF, simple approach: 
+            // Main Row: Shows Number, Perilaku Text, Starts Ekspektasi (rowspan derived from group size?)
+            // The editor state `rowSpans` might be accurate, let's try to trust the editor's structure if possible, 
+            // or just render straight:
+
+            rows.forEach((row, index) => {
+                const isMain = !row.isSubRow;
+                const col0 = stripHtml(row.columns?.[0] || ''); // Perilaku/Indikator
+                const col1 = stripHtml(row.columns?.[1] || ''); // Ekspektasi
+
+                if (isMain) {
+                    mainRowNumber++;
+                    const rowSpan = row.rowSpans?.[1] || 1;
+                    // Note: row.rowSpans[1] is for the 2nd column in Editor (Ekspektasi)
+
+                    html += `
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top; width: 40px;">${mainRowNumber}</td>
+                            <td style="border: 1px solid #000; padding: 8px; vertical-align: top; font-weight: bold;">${col0}</td>
+                            <td rowspan="${rowSpan}" style="border: 1px solid #000; padding: 8px; vertical-align: top;">${col1}</td>
+                        </tr>
+                    `;
+                } else {
+                    // Sub Row
+                    // We assume the Ekspektasi column is handled by the parent's rowspan, so we skip it (display: none concept in PDF?? No, just don't render the td if covered)
+                    // But in HTML table, if previous row had rowspan, we just omit the cell here.
+                    // The editor puts `colHiddens` on this row.
+
+                    const isCol1Hidden = row.colHiddens?.includes(1);
+
+                    html += `
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top;"></td>
+                            <td style="border: 1px solid #000; padding: 8px; vertical-align: top; padding-left: 20px;">- ${col0}</td>
+                            ${!isCol1Hidden ? `<td style="border: 1px solid #000; padding: 8px; vertical-align: top;">${col1}</td>` : ''}
+                        </tr>
+                    `;
+                }
+            });
+
+            return html;
         };
 
         // Create HTML content
@@ -399,6 +503,23 @@ const ReviewRealisasi = () => {
                     </div>
                 </div>
 
+                <!-- Perilaku Kerja Section -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px;">PERILAKU KERJA</h3>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11pt;">
+                        <thead>
+                            <tr style="background-color: #f0f0f0;">
+                                <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 40px;">No</th>
+                                <th style="border: 1px solid #000; padding: 8px; text-align: center;">Perilaku Kerja</th>
+                                <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 35%;">Ekspektasi Khusus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${renderPerilakuRows(perilakuRows)}
+                        </tbody>
+                    </table>
+                </div>
+
                 <!-- Rating Summary -->
                 ${skp.predikatAkhir ? `
                 <div style="margin: 20px 0; padding: 15px; border: 1px solid #000; background-color: #f9f9f9;">
@@ -412,8 +533,19 @@ const ReviewRealisasi = () => {
                 ` : ''}
 
                 <!-- Signature Section -->
-                <div style="margin-top: 50px; display: flex; justify-content: flex-end; page-break-inside: avoid;">
-                    <div style="text-align: center; width: 280px;">
+                <div style="margin-top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid;">
+                    <!-- Pegawai (Left) -->
+                    <div style="text-align: center; width: 300px;">
+                        <p style="font-size: 11pt; margin-bottom: 60px;">
+                            <br/>
+                            Pegawai Yang Dinilai
+                        </p>
+                        <p style="font-size: 11pt; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">${skp.user?.fullName || '...................'}</p>
+                        <p style="font-size: 11pt;">NIP. ${skp.user?.identityNumber || '...................'}</p>
+                    </div>
+
+                    <!-- Pejabat Penilai (Right) -->
+                    <div style="text-align: center; width: 300px;">
                         <p style="font-size: 11pt; margin-bottom: 60px;">
                             ${new Date(skp.realisasiReviewedAt || new Date()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
                             Pejabat Penilai Kinerja
@@ -424,6 +556,7 @@ const ReviewRealisasi = () => {
                 </div>
             </div>
         `;
+
 
         const opt = {
             margin: [10, 10, 10, 10],
@@ -845,6 +978,7 @@ const ReviewRealisasi = () => {
 
                     {skp.realisasiStatus !== 'Approved' && (
                         <>
+
                             <Button
                                 variant="outline"
                                 onClick={handleSubmitReview}

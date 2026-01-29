@@ -245,22 +245,197 @@ const ReviewRealisasi = () => {
     };
 
     const handleDownloadPDF = () => {
-        const element = document.getElementById('print-area');
-        const opt = {
-            margin: [10, 10, 10, 10], // top, left, bottom, right
-            filename: `SKP_${skp.user.fullName}_${skp.period}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        if (!skp) return;
+
+        // Evaluator Data
+        const evaluator = skp.evaluator || {};
+        const evaluatorName = evaluator.fullName || "_______________________";
+        const evaluatorNIP = evaluator.identityNumber || "...................";
+        const evaluatorJabatan = evaluator.jabatan || "Pejabat Penilai Kinerja";
+        const evaluatorPangkat = evaluator.pangkat || "-";
+        const evaluatorUnit = evaluator.departmentName || "-";
+
+        // Helper to strip HTML tags
+        const stripHtml = (html) => {
+            if (!html) return '-';
+            const tmp = document.createElement("DIV");
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || '-';
         };
 
-        // Hide no-print elements before generating
-        document.body.classList.add('printing-pdf');
+        // Helper to render rows for hasil kerja tables
+        const renderHasilKerjaRows = (planRows, realisasiRows, feedbackData) => {
+            if (!planRows || planRows.length === 0) {
+                return '<tr><td colspan="5" style="text-align: center; padding: 12px; font-style: italic; color: #666;">Tidak ada data</td></tr>';
+            }
 
-        html2pdf().set(opt).from(element).save().then(() => {
-            document.body.classList.remove('printing-pdf');
-        });
+            // Group rows by main row (same logic as renderSection)
+            const groups = [];
+            let mainRowCounter = 0;
+            let currentGroup = null;
+
+            planRows.forEach((row, index) => {
+                const isMainRow = !row.isSubRow;
+                if (isMainRow) {
+                    mainRowCounter++;
+                    currentGroup = {
+                        number: mainRowCounter,
+                        rows: [{ ...row, originalIndex: index }],
+                        startIndex: index
+                    };
+                    groups.push(currentGroup);
+                } else if (currentGroup) {
+                    currentGroup.rows.push({ ...row, originalIndex: index });
+                }
+            });
+
+            return groups.map((group) => {
+                // Combine all plan content for this group
+                const planContent = group.rows.map(row => {
+                    const content = row.columns?.[0] || '';
+                    return stripHtml(content);
+                }).join('\n• ');
+
+                const realisasiContent = stripHtml(realisasiRows?.[group.startIndex]?.realisasi || '-');
+                const umpanBalik = feedbackData?.[group.startIndex]?.umpanBalik || '-';
+                const rating = feedbackData?.[group.startIndex]?.rating || '-';
+
+                return `
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top; width: 40px;">${group.number}</td>
+                        <td style="border: 1px solid #000; padding: 8px; vertical-align: top; width: 30%;">${planContent}</td>
+                        <td style="border: 1px solid #000; padding: 8px; vertical-align: top; width: 25%;">${realisasiContent}</td>
+                        <td style="border: 1px solid #000; padding: 8px; vertical-align: top; width: 25%;">${umpanBalik}</td>
+                        <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top; width: 15%;">${rating}</td>
+                    </tr>
+                `;
+            }).join('');
+        };
+
+        // Create HTML content
+        const element = document.createElement('div');
+        element.innerHTML = `
+            <div style="font-family: 'Times New Roman', Times, serif; padding: 20px; color: #000; line-height: 1.4; font-size: 11pt;">
+                <!-- Header -->
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <h2 style="font-size: 14pt; font-weight: bold; margin: 0;">SASARAN KINERJA PEGAWAI</h2>
+                    <h3 style="font-size: 12pt; font-weight: bold; margin: 5px 0;">PENDEKATAN HASIL KERJA KUALITATIF</h3>
+                    <h4 style="font-size: 11pt; font-weight: normal; margin: 5px 0;">BAGI PEJABAT ADMINISTRASI / FUNGSIONAL</h4>
+                    <p style="font-size: 11pt; margin: 10px 0;">Periode: ${skp.period || skp.year || '-'}</p>
+                </div>
+
+                <!-- Employee Info Table -->
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 11pt;">
+                    <thead>
+                        <tr>
+                            <th style="width: 50%; border: 1px solid #000; padding: 8px; text-align: left; background-color: #f0f0f0;">PEGAWAI YANG DINILAI</th>
+                            <th style="width: 50%; border: 1px solid #000; padding: 8px; text-align: left; background-color: #f0f0f0;">PEJABAT PENILAI KINERJA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 10px; vertical-align: top;">
+                                <table style="width: 100%; border: none; font-size: 11pt;">
+                                    <tr><td style="width: 100px; padding: 2px 0;">1. Nama</td><td style="padding: 2px 0;">: ${skp.user?.fullName || '-'}</td></tr>
+                                    <tr><td style="padding: 2px 0;">2. NIP</td><td style="padding: 2px 0;">: ${skp.user?.identityNumber || '-'}</td></tr>
+                                    <tr><td style="padding: 2px 0;">3. Pangkat/Gol.</td><td style="padding: 2px 0;">: ${skp.user?.pangkat || '-'}</td></tr>
+                                    <tr><td style="padding: 2px 0;">4. Jabatan</td><td style="padding: 2px 0;">: ${skp.user?.jabatan || '-'}</td></tr>
+                                    <tr><td style="padding: 2px 0;">5. Unit Kerja</td><td style="padding: 2px 0;">: ${skp.user?.departmentName || '-'}</td></tr>
+                                </table>
+                            </td>
+                            <td style="border: 1px solid #000; padding: 10px; vertical-align: top;">
+                                <table style="width: 100%; border: none; font-size: 11pt;">
+                                    <tr><td style="width: 100px; padding: 2px 0;">1. Nama</td><td style="padding: 2px 0;">: ${evaluatorName}</td></tr>
+                                    <tr><td style="padding: 2px 0;">2. NIP</td><td style="padding: 2px 0;">: ${evaluatorNIP}</td></tr>
+                                    <tr><td style="padding: 2px 0;">3. Pangkat/Gol.</td><td style="padding: 2px 0;">: ${evaluatorPangkat}</td></tr>
+                                    <tr><td style="padding: 2px 0;">4. Jabatan</td><td style="padding: 2px 0;">: ${evaluatorJabatan}</td></tr>
+                                    <tr><td style="padding: 2px 0;">5. Unit Kerja</td><td style="padding: 2px 0;">: ${evaluatorUnit}</td></tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Hasil Kerja Section -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px;">HASIL KERJA</h3>
+                    
+                    <!-- A. Utama -->
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px;">A. Utama</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11pt;">
+                            <thead>
+                                <tr style="background-color: #f0f0f0;">
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 40px;">No</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Rencana Kinerja</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Realisasi</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Umpan Balik</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 100px;">Nilai</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderHasilKerjaRows(skp.details?.utama, skp.realisasi?.utama, feedback.utama)}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- B. Tambahan -->
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px;">B. Tambahan</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11pt;">
+                            <thead>
+                                <tr style="background-color: #f0f0f0;">
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 40px;">No</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Rencana Kinerja</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Realisasi</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Umpan Balik</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 100px;">Nilai</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderHasilKerjaRows(skp.details?.tambahan, skp.realisasi?.tambahan, feedback.tambahan)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Rating Summary -->
+                ${skp.predikatAkhir ? `
+                <div style="margin: 20px 0; padding: 15px; border: 1px solid #000; background-color: #f9f9f9;">
+                    <table style="width: 100%; font-size: 11pt;">
+                        <tr>
+                            <td style="width: 200px; font-weight: bold;">RATING HASIL KERJA</td>
+                            <td>: ${skp.predikatAkhir}</td>
+                        </tr>
+                    </table>
+                </div>
+                ` : ''}
+
+                <!-- Signature Section -->
+                <div style="margin-top: 50px; display: flex; justify-content: flex-end; page-break-inside: avoid;">
+                    <div style="text-align: center; width: 280px;">
+                        <p style="font-size: 11pt; margin-bottom: 60px;">
+                            ${new Date(skp.realisasiReviewedAt || new Date()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
+                            Pejabat Penilai Kinerja
+                        </p>
+                        <p style="font-size: 11pt; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">${evaluatorName}</p>
+                        <p style="font-size: 11pt;">NIP. ${evaluatorNIP}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const opt = {
+            margin: [10, 10, 10, 10],
+            filename: `SKP_${skp.user?.fullName?.replace(/\s+/g, '_')}_${skp.period || skp.year}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save();
     };
+
 
 
 

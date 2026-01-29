@@ -137,13 +137,13 @@ const UserManagement = () => {
         {
             header: "Peran",
             cell: (row) => {
-                const colors = { admin: 'purple', kepegawaian: 'warning', dosen: 'info' };
-                return <Badge variant={colors[row.role]}>{row.role}</Badge>
+                const colors = { admin: 'purple', penilai: 'warning', dosen: 'info' };
+                return <Badge variant={colors[row.role] || 'default'}>{row.role}</Badge>
             }
         },
         {
             header: "Departemen",
-            accessorKey: "department"
+            accessorKey: "departmentName"
         },
         {
             header: "Status",
@@ -295,7 +295,7 @@ const UserManagement = () => {
                                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                             >
                                 <option value="dosen">Dosen</option>
-                                <option value="kepegawaian">Kepegawaian</option>
+                                <option value="penilai">Penilai</option>
                                 <option value="admin">Admin</option>
                                 {currentUser?.role === 'superadmin' && <option value="superadmin">Superadmin</option>}
                             </select>

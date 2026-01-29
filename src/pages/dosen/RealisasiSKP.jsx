@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
-import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import Toolbar from './components/Toolbar'; // Reuse existing toolbar
 import {
@@ -42,7 +41,6 @@ const SimpleEditor = ({
         extensions: [
             StarterKit,
             Underline,
-            TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Placeholder.configure({ placeholder }),
         ],
         content: content,
@@ -315,7 +313,7 @@ const RealisasiSKP = () => {
                         <thead>
                             <tr className="bg-blue-100 border-b border-blue-300">
                                 <th className="border-r border-blue-300 py-2 px-2 text-xs font-bold text-blue-800 text-center">No</th>
-                                <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Rencana Kinerja</th>
+                                <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Kegiatan</th>
                                 <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Realisasi</th>
                                 <th className="py-2 px-3 text-xs font-bold text-blue-800 text-left">Umpan Balik</th>
                             </tr>
@@ -477,10 +475,6 @@ const RealisasiSKP = () => {
                 <div className="sticky top-16 z-40 bg-white/95 backdrop-blur shadow-md border border-blue-200 rounded-lg p-1.5 mb-4 mx-1 animate-in fade-in slide-in-from-top-4">
                     <Toolbar
                         editor={activeEditor}
-                        onUndo={() => activeEditor?.chain().focus().undo().run()}
-                        onRedo={() => activeEditor?.chain().focus().redo().run()}
-                        canUndo={activeEditor?.can().undo()}
-                        canRedo={activeEditor?.can().redo()}
                     />
                 </div>
             )}

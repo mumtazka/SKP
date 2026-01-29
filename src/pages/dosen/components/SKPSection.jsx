@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
-import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Plus, Trash2, MessageSquare, MoreVertical, Grid3X3, GripVertical, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/common/Button';
@@ -56,7 +55,6 @@ const EditorCell = ({
         extensions: [
             StarterKit,
             Underline,
-            TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Placeholder.configure({ placeholder: placeholder }),
         ],
         content: content,
@@ -148,18 +146,6 @@ const RowContextMenu = ({ isOpen, onClose, onSetBorder, currentBorder, onDelete,
                 className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-[160px] animate-in zoom-in-95 duration-100"
                 style={{ top: position.top, left: position.left }}
             >
-                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase">Garis Batas Baris</div>
-                {Object.entries(BORDER_STYLES).map(([key, style]) => (
-                    <button
-                        key={key}
-                        onClick={() => { onSetBorder(key); onClose(); }}
-                        className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-purple-50 ${currentBorder === key ? 'bg-purple-100 text-primary font-medium' : 'text-gray-700'}`}
-                    >
-                        <div className={`w-4 h-0.5 ${key === 'none' ? 'border-t border-dashed border-gray-300' : key === 'thin' ? 'bg-gray-400' : 'bg-gray-700 h-1'}`}></div>
-                        {style.label}
-                    </button>
-                ))}
-                <div className="border-t border-gray-100 my-1"></div>
                 <button
                     onClick={() => { onDelete(); onClose(); }}
                     className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 text-red-600 hover:bg-red-50"
@@ -702,7 +688,7 @@ const SKPSection = ({
                                 <th key={i} className="border-r border-purple-200 last:border-r-0 py-1.5 px-2 text-left relative group align-middle font-normal">
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-primary uppercase truncate">
-                                            {columnHeaders && columnHeaders[i] ? columnHeaders[i] : `Kolom ${i + 1}`}
+                                            {columnHeaders && columnHeaders[i] ? columnHeaders[i] : (i === 0 ? 'Kegiatan' : `Kolom ${i + 1}`)}
                                         </span>
                                     </div>
                                     {!readOnly && i < colCount - 1 && (

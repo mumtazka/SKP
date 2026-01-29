@@ -97,7 +97,7 @@ const ReviewRealisasi = () => {
     const isReviewer = skp && user && skp.userId !== user.id; // User is reviewing someone else's SKP
     const canEditPerilaku = isReviewer && skp?.realisasiStatus !== 'Approved';
 
-    const returnTo = location.state?.returnTo || '/kepegawaian/evaluations';
+    const returnTo = location.state?.returnTo || '/penilai/evaluations';
 
     useEffect(() => {
         loadSkp();
@@ -367,7 +367,7 @@ const ReviewRealisasi = () => {
                             <thead>
                                 <tr style="background-color: #f0f0f0;">
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 40px;">No</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Rencana Kinerja</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Kegiatan</th>
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center;">Realisasi</th>
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center;">Umpan Balik</th>
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 100px;">Nilai</th>
@@ -386,7 +386,7 @@ const ReviewRealisasi = () => {
                             <thead>
                                 <tr style="background-color: #f0f0f0;">
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 40px;">No</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Rencana Kinerja</th>
+                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Kegiatan</th>
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center;">Realisasi</th>
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center;">Umpan Balik</th>
                                     <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 100px;">Nilai</th>
@@ -493,7 +493,7 @@ const ReviewRealisasi = () => {
                         <thead>
                             <tr className="bg-blue-100 border-b border-blue-300">
                                 <th className="border-r border-blue-300 py-2 px-2 text-xs font-bold text-blue-800 text-center">No</th>
-                                <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Rencana Kinerja</th>
+                                <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Kegiatan</th>
                                 <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Realisasi</th>
                                 <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Umpan Balik</th>
                                 <th className="py-2 px-3 text-xs font-bold text-blue-800 text-left">Nilai</th>

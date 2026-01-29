@@ -143,7 +143,7 @@ const HistorySKP = () => {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-primary hover:text-primary hover:bg-primary/5"
-                                                onClick={() => navigate(`/kepegawaian/review-realisasi/${skp.id}`, { state: { returnTo: '/kepegawaian/history' } })}
+                                                onClick={() => navigate(`/penilai/review-realisasi/${skp.id}`, { state: { returnTo: '/penilai/history' } })}
                                             >
                                                 <Eye size={16} className="mr-2" />
                                                 Lihat & Download

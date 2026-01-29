@@ -551,11 +551,11 @@ export const api = {
             // Create notification for staff
             try {
                 await api.notifications.create({
-                    targetRole: 'kepegawaian',
+                    targetRole: 'penilai',
                     title: 'New SKP Submission',
                     message: 'A new SKP has been submitted and is pending review.',
                     type: 'info',
-                    link: '/kepegawaian/dashboard'
+                    link: '/penilai/dashboard'
                 });
             } catch (e) {
                 console.warn('Failed to create notification:', e);

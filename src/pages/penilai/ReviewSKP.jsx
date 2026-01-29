@@ -11,7 +11,7 @@ const ReviewSKP = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const returnTo = location.state?.returnTo || '/kepegawaian/approvals';
+    const returnTo = location.state?.returnTo || '/penilai/approvals';
     const [skp, setSkp] = useState(null);
     const [loading, setLoading] = useState(true);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -28,7 +28,7 @@ const ReviewSKP = () => {
                 // For now, let's assume we can filter from getAll or add getById.
                 // Let's check api.js... it doesn't have getById for SKP.
                 // I'll add getById to api.js first or just filter from getAll relative to the user context?
-                // Actually, as admin/kepegawaian, I can see all.
+                // Actually, as admin/penilai, I can see all.
                 const all = await api.skps.getAll();
                 const found = all.find(s => s.id === id);
                 if (found) {

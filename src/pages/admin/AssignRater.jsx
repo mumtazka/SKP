@@ -35,7 +35,8 @@ const AssignRater = () => {
         }
     };
 
-    const lecturers = users.filter(u => u.role === 'dosen');
+    // Filter users to show Dosen AND Penilai as assignable targets (requiring a rater)
+    const lecturers = users.filter(u => ['dosen', 'penilai', 'kepegawaian'].includes(u.role));
     const filteredLecturers = lecturers.filter(l =>
         l.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         l.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -58,7 +59,7 @@ const AssignRater = () => {
 
         try {
             console.log("=== STARTING RATER ASSIGNMENT ===");
-            console.log("Selected Lecturer:", selectedLecturer);
+            console.log("Selected User:", selectedLecturer); // Updated log label
             console.log("Form Data:", formData);
 
             // Ensure ID is a string to match typical localstorage format behavior
@@ -116,7 +117,7 @@ const AssignRater = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Atur Pejabat Penilai</h1>
-                    <p className="text-gray-500">Kelola Pejabat Penilai untuk Dosen</p>
+                    <p className="text-gray-500">Kelola Pejabat Penilai untuk Dosen & Penilai</p>
                 </div>
             </div>
 
@@ -125,18 +126,18 @@ const AssignRater = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                     type="text"
-                    placeholder="Cari dosen..."
+                    placeholder="Cari pengguna..."
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
             </div>
 
-            {/* Lecturers Grid */}
+            {/* Users Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredLecturers.map((lecturer) => {
+                    // Find assigned rater object from full list
                     const pejabatPenilai = users.find(u => u.id === lecturer.raters?.pejabatPenilaiId);
-                    const atasanPejabatPenilai = users.find(u => u.id === lecturer.raters?.atasanPejabatPenilaiId);
 
                     return (
                         <Card key={lecturer.id} className="hover:shadow-md transition-shadow">
@@ -150,8 +151,8 @@ const AssignRater = () => {
                                     <CardTitle className="text-base truncate" title={lecturer.fullName}>
                                         {lecturer.fullName}
                                     </CardTitle>
-                                    <CardDescription className="truncate">
-                                        {lecturer.departmentName || 'No Dept'}
+                                    <CardDescription className="truncate capitalize">
+                                        {lecturer.role} • {lecturer.departmentName || 'No Dept'}
                                     </CardDescription>
                                 </div>
                             </CardHeader>
@@ -185,7 +186,7 @@ const AssignRater = () => {
 
                 {filteredLecturers.length === 0 && (
                     <div className="col-span-full text-center py-12 text-gray-500">
-                        Tidak ada dosen yang cocok dengan pencarian.
+                        Tidak ada pengguna yang cocok dengan pencarian.
                     </div>
                 )}
             </div>
@@ -230,11 +231,14 @@ const AssignRater = () => {
                                     }}
                                 >
                                     <option value="" disabled hidden>Pilih Pejabat Penilai</option>
-                                    {users.filter(u => u.role === 'kepegawaian').map(u => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.fullName} ({u.role})
-                                        </option>
-                                    ))}
+                                    {users
+                                        .filter(u => ['kepegawaian', 'penilai'].includes(u.role))
+                                        .filter(u => u.id !== selectedLecturer.id) // Prevent self-assignment
+                                        .map(u => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.fullName} ({u.role})
+                                            </option>
+                                        ))}
                                 </select>
                             </div>
                         </div>

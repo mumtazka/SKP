@@ -110,7 +110,7 @@ const Evaluations = () => {
                 <Button
                     size="sm"
                     variant={row.realisasiStatus === 'Pending' ? 'gradient' : 'outline'}
-                    onClick={() => navigate(`/kepegawaian/review-realisasi/${row.id}`, { state: { returnTo: '/kepegawaian/evaluations' } })}
+                    onClick={() => navigate(`/penilai/review-realisasi/${row.id}`, { state: { returnTo: '/penilai/evaluations' } })}
                     className="flex items-center gap-1.5"
                 >
                     <Eye size={14} />

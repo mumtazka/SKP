@@ -151,7 +151,7 @@ const Profile = () => {
     const getRoleBadge = (role) => {
         const roleConfig = {
             admin: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Administrator' },
-            kepegawaian: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Kepegawaian' },
+            penilai: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Penilai' },
             dosen: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Dosen' }
         };
         const config = roleConfig[role] || roleConfig.dosen;

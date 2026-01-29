@@ -94,7 +94,7 @@ export const INITIAL_USERS = [
     email: "budi.hr@univ.ac.id",
     fullName: "Budi Santoso, S.E., M.M.",
     identityNumber: "NIP. 199001011020011001",
-    role: "kepegawaian",
+    role: "penilai",
     departmentId: "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
     studyProgramId: null,
     phoneNumber: "+62 856-7890-1234",

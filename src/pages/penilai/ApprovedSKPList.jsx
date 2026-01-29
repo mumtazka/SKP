@@ -271,7 +271,7 @@ const ApprovedSKPList = () => {
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => navigate(`/kepegawaian/approval/${row.id}`, { state: { returnTo: '/kepegawaian/skp-list' } })}
+                        onClick={() => navigate(`/penilai/approval/${row.id}`, { state: { returnTo: '/penilai/skp-list' } })}
                         className="h-8 text-xs font-medium border-gray-200 hover:border-primary hover:text-primary transition-colors"
                     >
                         <Eye size={14} className="mr-1.5" /> Detail

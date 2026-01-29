@@ -382,8 +382,8 @@ const KepegawaianDashboard = () => {
 
             {/* Main Content */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard Kepegawaian</h1>
-                <p className="text-gray-500">Overview of SKP submissions and evaluations</p>
+                <h1 className="text-2xl font-bold text-gray-900">Dashboard Penilai</h1>
+                <p className="text-gray-500">Welcome back, {user.fullName}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -515,7 +515,7 @@ const KepegawaianDashboard = () => {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button
-                                                    onClick={() => navigate(`/kepegawaian/approval/${skp.id}`, { state: { returnTo: '/kepegawaian/dashboard' } })}
+                                                    onClick={() => navigate(`/penilai/approval/${skp.id}`, { state: { returnTo: '/penilai/dashboard' } })}
                                                     className="p-2 text-gray-400 hover:text-primary hover:bg-purple-50 rounded-lg transition-colors group relative"
                                                     title="Lihat Detail"
                                                 >

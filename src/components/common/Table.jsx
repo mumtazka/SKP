@@ -95,7 +95,7 @@ const DataTable = ({ columns, data, onRowClick, pagination, onPageChange }) => {
                     ) : (
                         <TableRow>
                             <TableCell colSpan={columns.length} className="h-24 text-center">
-                                No results.
+                                Tidak ada data.
                             </TableCell>
                         </TableRow>
                     )}
@@ -106,7 +106,7 @@ const DataTable = ({ columns, data, onRowClick, pagination, onPageChange }) => {
             {pagination && (
                 <div className="flex items-center justify-between p-4 border-t border-gray-200">
                     <div className="text-sm text-gray-500">
-                        Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+                        Menampilkan {((pagination.page - 1) * pagination.limit) + 1} sampai {Math.min(pagination.page * pagination.limit, pagination.total)} dari {pagination.total} data
                     </div>
                     <div className="flex items-center gap-2">
                         <Button

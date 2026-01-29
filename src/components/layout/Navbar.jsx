@@ -42,7 +42,9 @@ const UserDropdown = ({ user, logout }) => {
                 />
                 <div className="hidden md:block text-left">
                     <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
-                    <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                    <p className="text-xs text-gray-500 capitalize">
+                        {['kepegawaian', 'penilai'].includes(user.role) ? 'Penilai' : user.role}
+                    </p>
                 </div>
             </button>
 

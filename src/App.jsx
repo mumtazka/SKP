@@ -20,14 +20,14 @@ import DosenDashboard from '@/pages/dosen/DosenDashboard';
 import SubmitSKP from '@/pages/dosen/SubmitSKP';
 import RealisasiSKP from '@/pages/dosen/RealisasiSKP';
 
-// Kepegawaian Pages
-import KepegawaianDashboard from '@/pages/kepegawaian/KepegawaianDashboard';
-import Approval from '@/pages/kepegawaian/Approval';
-import ReviewSKP from '@/pages/kepegawaian/ReviewSKP';
-import ApprovedSKPList from '@/pages/kepegawaian/ApprovedSKPList';
-import Evaluations from '@/pages/kepegawaian/Evaluations';
-import ReviewRealisasi from '@/pages/kepegawaian/ReviewRealisasi';
-import HistorySKP from '@/pages/kepegawaian/HistorySKP';
+// Penilai Pages
+import PenilaiDashboard from '@/pages/penilai/PenilaiDashboard';
+import Approval from '@/pages/penilai/Approval';
+import ReviewSKP from '@/pages/penilai/ReviewSKP';
+import ApprovedSKPList from '@/pages/penilai/ApprovedSKPList';
+import Evaluations from '@/pages/penilai/Evaluations';
+import ReviewRealisasi from '@/pages/penilai/ReviewRealisasi';
+import HistorySKP from '@/pages/penilai/HistorySKP';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -36,6 +36,7 @@ import AssignRater from '@/pages/admin/AssignRater';
 import UserManagement from '@/pages/admin/UserManagement';
 import MasterData from '@/pages/admin/MasterData';
 import PeriodSettings from '@/pages/admin/PeriodSettings';
+import SelectUserForSKP from '@/pages/admin/SelectUserForSKP';
 
 // Placeholders for remaining
 const ComingSoon = ({ title }) => (
@@ -52,7 +53,7 @@ const DashboardRedirect = () => {
     switch (user.role) {
         case 'superadmin': return <Navigate to="/superadmin/dashboard" replace />;
         case 'admin': return <Navigate to="/admin/dashboard" replace />;
-        case 'kepegawaian': return <Navigate to="/kepegawaian/dashboard" replace />;
+        case 'penilai': return <Navigate to="/penilai/dashboard" replace />;
         default: return <Navigate to="/dosen/dashboard" replace />;
     }
 };
@@ -82,9 +83,9 @@ function App() {
                                 <Route path="history" element={<ComingSoon title="Riwayat SKP" />} />
                             </Route>
 
-                            {/* KEPEGAWAIAN */}
-                            <Route path="kepegawaian">
-                                <Route path="dashboard" element={<KepegawaianDashboard />} />
+                            {/* PENILAI */}
+                            <Route path="penilai">
+                                <Route path="dashboard" element={<PenilaiDashboard />} />
                                 <Route path="approvals" element={<Approval />} />
                                 <Route path="approval/:id" element={<ReviewSKP />} />
                                 <Route path="skp-list" element={<ApprovedSKPList />} />
@@ -109,6 +110,7 @@ function App() {
                                 <Route path="master-data" element={<MasterData />} />
                                 <Route path="assign" element={<AssignRater />} />
                                 <Route path="period-settings" element={<PeriodSettings />} />
+                                <Route path="create-skp" element={<SelectUserForSKP />} />
                             </Route>
                         </Route>
 

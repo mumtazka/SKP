@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import { toast } from 'sonner';
@@ -13,14 +13,12 @@ import { Button } from '@/components/common/Button';
 import useHistory from '@/hooks/useHistory';
 import { usePeriod } from '@/context/PeriodContext';
 
-// ... (SectionHeader component remains the same)
 const SectionHeader = ({ title }) => (
     <div className="bg-primary text-white font-bold py-2.5 px-4 rounded-t-md shadow-sm text-sm tracking-wide uppercase mt-8 mb-0">
         {title}
     </div>
 );
 
-// ... (INITIAL_FORM_STATE remains the same)
 const INITIAL_FORM_STATE = {
     utama: [
         { id: 1, columns: [''], isSubRow: false },
@@ -41,7 +39,6 @@ const INITIAL_FORM_STATE = {
     ]
 };
 
-// ... (ConfirmationModal component remains the same)
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, isSubmitting }) => {
     if (!isOpen) return null;
 
@@ -76,22 +73,28 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, isSubmitting }) => {
         document.body
     );
 };
-
 const SubmitSKP = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useAuth();
+
+    // Determine effective user (Admin acting as proxy or normal user)
+    const targetUser = location.state?.targetUser;
+    const effectiveUser = targetUser || user;
+    const isProxyMode = !!targetUser;
+
     const { periodConfig, periodLabel, loading: periodLoading } = usePeriod();
     const [evaluator, setEvaluator] = useState(null);
-    const [activeEditor, setActiveEditor] = useState(null); // Keep for backwards compat if needed, or focused single
-    const [selectedEditors, setSelectedEditors] = useState([]); // Array of selected Tiptap instances
-    const [activeSection, setActiveSection] = useState(null); // 'utama', 'tambahan', etc.
+    const [activeEditor, setActiveEditor] = useState(null);
+    const [selectedEditors, setSelectedEditors] = useState([]);
+    const [activeSection, setActiveSection] = useState(null);
 
     const [portalTarget, setPortalTarget] = useState(null);
     const [feedback, setFeedback] = useState(null);
     const [existingSkpId, setExistingSkpId] = useState(null);
-    const [skpStatus, setSkpStatus] = useState(null); // Track the current SKP status
-    const [isReadOnly, setIsReadOnly] = useState(false); // Prevent editing when approved/pending
-    const [currentYearSkp, setCurrentYearSkp] = useState(null); // Track current year's SKP
+    const [skpStatus, setSkpStatus] = useState(null);
+    const [isReadOnly, setIsReadOnly] = useState(false);
+    const [currentYearSkp, setCurrentYearSkp] = useState(null);
 
     const [selectionRange, setSelectionRange] = useState(null);
 
@@ -101,20 +104,27 @@ const SubmitSKP = () => {
 
     const currentYear = new Date().getFullYear().toString();
 
+    // Redirect Admin to election page if they access this directly without proxy target
+    useEffect(() => {
+        if (user && user.role === 'admin' && !isProxyMode) {
+            navigate('/admin/create-skp', { replace: true });
+        }
+    }, [user, isProxyMode, navigate]);
+
     useEffect(() => {
         setPortalTarget(document.getElementById('navbar-action-area'));
     }, []);
 
     // Auto-save hook
     const {
-        data: draftData, // Rename to specific source
+        data: draftData,
         isSaving,
         lastSaved,
         clearDraft,
-        setData: setDraftData // Rename to specific setter
-    } = useSkpDraft(INITIAL_FORM_STATE);
+        setData: setDraftData
+    } = useSkpDraft(INITIAL_FORM_STATE, effectiveUser?.id);
 
-    // History Hook - The Master State for Editing
+    // History Hook
     const {
         state: historyState,
         pushState,
@@ -125,31 +135,24 @@ const SubmitSKP = () => {
         reset: resetHistory
     } = useHistory(INITIAL_FORM_STATE);
 
-    // Track initialization to prevent re-resetting history on every draft load
     const historyInitialized = useRef(false);
     const saveTimeoutRef = useRef(null);
 
-    // Migration Helper
     const migrateRows = (rows) => {
         if (!rows || rows.length === 0) return [];
-        // Check if migration is needed (if any row is missing isSubRow property)
         const needsMigration = rows.some(r => r.isSubRow === undefined);
         if (!needsMigration) return rows;
-
         return rows.map((row, index) => {
             const isEven = index % 2 === 0;
             if (isEven) {
                 return { ...row, isSubRow: false, parentId: undefined };
             } else {
-                // Link to the previous row (which is a main row)
                 const parentId = rows[index - 1]?.id;
                 return { ...row, isSubRow: true, parentId: parentId };
             }
         });
     };
 
-    // Derived state for rendering: Use history if available, otherwise draft or initial
-    // Apply migration to ensure legacy data fits new structure
     const rawData = historyState || draftData;
     const data = React.useMemo(() => {
         if (!rawData) return rawData;
@@ -160,32 +163,17 @@ const SubmitSKP = () => {
         };
     }, [rawData]);
 
-    // Explicit Action Handler: Updates history AND drafts
-    // This is the ONLY way data should be updated during editing
     const handleDataUpdate = (newData, isTextUpdate = false) => {
-        setDraftData(newData); // Persist to local storage immediately for auto-save
-
+        setDraftData(newData);
         if (isTextUpdate) {
-            // Delay history push for text updates
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
             saveTimeoutRef.current = setTimeout(() => {
                 pushState(newData);
-            }, 300); // 300ms debounce for typing (more responsive)
+            }, 300);
         } else {
-            // Immediate push for structure changes (buttons)
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
             pushState(newData);
         }
-    };
-
-    // Helper functions for section updates
-    const updateSection = (sectionKey, updateFn) => {
-        if (!data) return; // Should catch this case
-        // This is legacy signature without isTextUpdate flag
-        // We might not use this directly anymore if we use updateSectionWithType
-        // But SKPSection expects simple callback wrapper usually.
-        // Wait, we updated SKPSection to call onChange(next, true).
-        // The render calls: onChange={(newRows, isTextUpdate) => updateSectionWithType('utama', newRows, isTextUpdate)}
     };
 
     const updateSectionWithType = (sectionKey, newRows, isTextUpdate) => {
@@ -197,33 +185,15 @@ const SubmitSKP = () => {
         handleDataUpdate(newData, isTextUpdate);
     };
 
-    // Undo/Redo Handlers
-    const handleUndo = () => {
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        if (canUndo) {
-            undo();
-        }
-    };
-
-    const handleRedo = () => {
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        if (canRedo) {
-            redo();
-        }
-    };
-
-    // Sync History State back to Draft Storage (Local Storage)
-    // This ensures that when we Undo/Redo, the "restored" state is also saved
     useEffect(() => {
         if (historyState) {
             setDraftData(historyState);
         }
     }, [historyState, setDraftData]);
 
-    // Initial Load: Load Draft into History ONCE
     useEffect(() => {
         const loadExistingSkp = async () => {
-            if (!user) return;
+            if (!effectiveUser) return;
             try {
                 if (draftData && !historyInitialized.current) {
                     const isInitial = JSON.stringify(draftData) === JSON.stringify(INITIAL_FORM_STATE);
@@ -232,19 +202,15 @@ const SubmitSKP = () => {
                     }
                     historyInitialized.current = true;
                 }
-
-                const skps = await api.skps.getByUser(user.id);
+                const skps = await api.skps.getByUser(effectiveUser.id);
                 const currentYearSkpEntry = skps.find(s => s.period === currentYear);
-
                 if (currentYearSkpEntry) {
                     setCurrentYearSkp(currentYearSkpEntry);
                     setExistingSkpId(currentYearSkpEntry.id);
                     setSkpStatus(currentYearSkpEntry.status);
-
                     if (currentYearSkpEntry.status === 'Approved') {
                         setIsReadOnly(true);
                         if (currentYearSkpEntry.details) {
-                            // Migrate loaded data
                             const migratedDetails = {
                                 ...currentYearSkpEntry.details,
                                 utama: migrateRows(currentYearSkpEntry.details?.utama),
@@ -259,7 +225,6 @@ const SubmitSKP = () => {
                         setIsReadOnly(false);
                         setFeedback(currentYearSkpEntry.feedback);
                         if (currentYearSkpEntry.details) {
-                            // Migrate loaded data
                             const migratedDetails = {
                                 ...currentYearSkpEntry.details,
                                 utama: migrateRows(currentYearSkpEntry.details?.utama),
@@ -273,7 +238,6 @@ const SubmitSKP = () => {
                     } else if (currentYearSkpEntry.status === 'Pending') {
                         setIsReadOnly(true);
                         if (currentYearSkpEntry.details) {
-                            // Migrate loaded data
                             const migratedDetails = {
                                 ...currentYearSkpEntry.details,
                                 utama: migrateRows(currentYearSkpEntry.details?.utama),
@@ -289,13 +253,11 @@ const SubmitSKP = () => {
                     setIsReadOnly(false);
                     setSkpStatus(null);
                 }
-
             } catch (e) {
                 console.error(e);
             }
         };
         loadExistingSkp();
-
         if (draftData && !historyInitialized.current) {
             const isInitial = JSON.stringify(draftData) === JSON.stringify(INITIAL_FORM_STATE);
             if (!isInitial) {
@@ -303,15 +265,13 @@ const SubmitSKP = () => {
             }
             historyInitialized.current = true;
         }
-    }, [user, currentYear]);
+    }, [effectiveUser, currentYear]);
 
     useEffect(() => {
         const fetchEvaluator = async () => {
-            if (!user) return;
-
+            if (!effectiveUser) return;
             try {
-                const freshUser = await api.users.getById(user.id);
-
+                const freshUser = await api.users.getById(effectiveUser.id);
                 if (freshUser.raters?.pejabatPenilaiId) {
                     const evaluatorData = await api.users.getById(freshUser.raters.pejabatPenilaiId);
                     setEvaluator(evaluatorData);
@@ -320,22 +280,19 @@ const SubmitSKP = () => {
                 console.error("Failed to fetch evaluator:", error);
             }
         };
-
         fetchEvaluator();
-    }, [user]);
+    }, [effectiveUser]);
 
     const handleConfirmSubmit = async () => {
-        if (!user || isReadOnly) return;
-
+        if (!effectiveUser || isReadOnly) return;
         setIsSubmitting(true);
         try {
             const payload = {
-                userId: user.id,
+                userId: effectiveUser.id,
                 period: currentYear,
                 details: data,
                 status: 'Pending'
             };
-
             if (existingSkpId) {
                 await api.skps.update(existingSkpId, payload);
                 toast.success("SKP berhasil diperbarui dan diajukan kembali!");
@@ -343,7 +300,6 @@ const SubmitSKP = () => {
                 await api.skps.create(payload);
                 toast.success("SKP berhasil diajukan!");
             }
-
             setSkpStatus('Pending');
             setIsReadOnly(true);
             setShowConfirm(false);
@@ -354,101 +310,6 @@ const SubmitSKP = () => {
             setIsSubmitting(false);
         }
     };
-
-    const performMerge = (start, end) => {
-        if (!activeSection) return;
-
-        let minR = Math.min(start.r, end.r);
-        let maxR = Math.max(start.r, end.r);
-        let minC = Math.min(start.c, end.c);
-        let maxC = Math.max(start.c, end.c);
-
-        const currentRows = data[activeSection];
-        const newRows = [...currentRows]; // Shallow copy array
-
-        const rowSpan = maxR - minR + 1;
-        const colSpan = maxC - minC + 1;
-
-        // Deep clone row at minR to avoid mutating state directly
-        newRows[minR] = { ...newRows[minR] };
-
-        // Update spans for top-left cell
-        newRows[minR] = {
-            ...newRows[minR],
-            colSpans: { ...(newRows[minR].colSpans || {}), [minC]: colSpan },
-            rowSpans: { ...(newRows[minR].rowSpans || {}), [minC]: rowSpan }
-        };
-
-        // Mark others as hidden
-        for (let r = minR; r <= maxR; r++) {
-            if (r !== minR) newRows[r] = { ...newRows[r] };
-
-            let currentHiddens = [...(newRows[r].colHiddens || [])];
-            for (let c = minC; c <= maxC; c++) {
-                if (r === minR && c === minC) continue;
-                if (!currentHiddens.includes(c)) currentHiddens.push(c);
-            }
-            newRows[r].colHiddens = currentHiddens;
-        }
-
-        updateSectionWithType(activeSection, newRows, false); // Structure update (not text)
-    };
-
-    const onMergeClick = () => {
-        if (selectionRange) {
-            performMerge(selectionRange.start, selectionRange.end);
-        }
-    };
-
-    const onUnmergeClick = () => {
-        if (!activeSection || !selectionRange) return;
-
-        const { start, end } = selectionRange;
-        const minR = Math.min(start.r, end.r);
-        const maxR = Math.max(start.r, end.r);
-        const minC = Math.min(start.c, end.c);
-        const maxC = Math.max(start.c, end.c);
-
-        const currentRows = data[activeSection];
-        const newRows = [...currentRows];
-
-        for (let r = minR; r <= maxR; r++) {
-            newRows[r] = { ...newRows[r] };
-
-            // 1. Unhide columns in this range
-            // We remove any column index that falls within [minC, maxC] from colHiddens
-            if (newRows[r].colHiddens) {
-                newRows[r].colHiddens = newRows[r].colHiddens.filter(c => c < minC || c > maxC);
-            }
-
-            // 2. Clear spans STARTING in this range
-            if (newRows[r].colSpans) {
-                const newColSpans = { ...newRows[r].colSpans };
-                let changed = false;
-                for (let c = minC; c <= maxC; c++) {
-                    if (newColSpans[c]) {
-                        delete newColSpans[c];
-                        changed = true;
-                    }
-                }
-                if (changed) newRows[r].colSpans = newColSpans;
-            }
-            if (newRows[r].rowSpans) {
-                const newRowSpans = { ...newRows[r].rowSpans };
-                let changed = false;
-                for (let c = minC; c <= maxC; c++) {
-                    if (newRowSpans[c]) {
-                        delete newRowSpans[c];
-                        changed = true;
-                    }
-                }
-                if (changed) newRows[r].rowSpans = newRowSpans;
-            }
-        }
-
-        updateSectionWithType(activeSection, newRows, false); // Structure update
-    };
-
 
     return (
         <div className="max-w-7xl mx-auto pb-20">
@@ -468,67 +329,100 @@ const SubmitSKP = () => {
                 <div className="flex items-center gap-3 text-sm text-gray-500 bg-white/50 px-4 py-2 rounded-full border border-gray-100 shadow-sm backdrop-blur-sm">
                     {!isReadOnly && (
                         isSaving ? (
-                            <span className="animate-pulse text-primary">Saving draft...</span>
+                            <span className="animate-pulse text-primary">Menyimpan draf...</span>
                         ) : lastSaved ? (
                             <span className="flex items-center gap-1 text-primary">
                                 <Save size={12} />
-                                Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                Disimpan {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         ) : (
-                            <span>Draft will auto-save</span>
+                            <span>Draf tersimpan otomatis</span>
                         )
                     )}
                 </div>
             </div>
 
+            {/* Proxy Mode Banner */}
+            {
+                isProxyMode && (
+                    <div className="mb-6 bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-purple-100 p-2 rounded-full">
+                                <Info className="text-purple-600" size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-purple-900">Mode Admin / Proxy</h3>
+                                <p className="text-purple-700 text-sm">
+                                    Anda sedang membuat/mengedit SKP atas nama: <span className="font-bold">{effectiveUser.fullName}</span> ({effectiveUser.role})
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(-1)}
+                            className="text-purple-700 hover:bg-purple-100"
+                        >
+                            Kembali
+                        </Button>
+                    </div>
+                )
+            }
+
             {/* APPROVED NOTICE */}
-            {skpStatus === 'Approved' && (
-                <div className="mb-8 bg-emerald-50 border border-emerald-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
-                    <div className="bg-emerald-100 p-2 rounded-full h-fit shrink-0">
-                        <CheckCircle className="text-emerald-600" size={24} />
+            {
+                skpStatus === 'Approved' && (
+                    <div className="mb-8 bg-emerald-50 border border-emerald-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
+                        <div className="bg-emerald-100 p-2 rounded-full h-fit shrink-0">
+                            <CheckCircle className="text-emerald-600" size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-emerald-900 text-lg">SKP Telah Disetujui</h3>
+                            <p className="text-emerald-700 mt-1 leading-relaxed">
+                                Rencana SKP Anda untuk tahun {currentYear} telah disetujui oleh pejabat penilai.
+                                Dokumen ini sekarang bersifat final dan tidak dapat diubah kembali.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="font-semibold text-emerald-900 text-lg">SKP Telah Disetujui</h3>
-                        <p className="text-emerald-700 mt-1 leading-relaxed">
-                            Rencana SKP Anda untuk tahun {currentYear} telah disetujui oleh pejabat penilai.
-                            Dokumen ini sekarang bersifat final dan tidak dapat diubah kembali.
-                        </p>
-                    </div>
-                </div>
-            )}
+                )
+            }
 
             {/* REVISION NOTICE */}
-            {skpStatus === 'Rejected' && feedback && (
-                <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
-                    <div className="bg-amber-100 p-2 rounded-full h-fit shrink-0">
-                        <AlertTriangle className="text-amber-600" size={24} />
+            {
+                skpStatus === 'Rejected' && feedback && (
+                    <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
+                        <div className="bg-amber-100 p-2 rounded-full h-fit shrink-0">
+                            <AlertTriangle className="text-amber-600" size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-amber-900 text-lg">Perlu Revisi</h3>
+                            <p className="text-amber-800 mt-2 p-3 bg-white/50 rounded-lg border border-amber-100 italic">
+                                "{feedback?.global || (typeof feedback === 'string' ? feedback : '')}"
+                            </p>
+                            <p className="text-amber-700 mt-3 text-sm font-medium">
+                                Silakan perbaiki poin-poin di atas dan ajukan kembali.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="font-semibold text-amber-900 text-lg">Perlu Revisi</h3>
-                        <p className="text-amber-800 mt-2 p-3 bg-white/50 rounded-lg border border-amber-100 italic">
-                            "{feedback?.global || (typeof feedback === 'string' ? feedback : '')}"
-                        </p>
-                        <p className="text-amber-700 mt-3 text-sm font-medium">
-                            Silakan perbaiki poin-poin di atas dan ajukan kembali.
-                        </p>
-                    </div>
-                </div>
-            )}
+                )
+            }
 
             {/* PENDING NOTICE */}
-            {skpStatus === 'Pending' && (
-                <div className="mb-8 bg-blue-50 border border-blue-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
-                    <div className="bg-blue-100 p-2 rounded-full h-fit shrink-0">
-                        <Clock className="text-blue-600" size={24} />
+            {
+                skpStatus === 'Pending' && (
+                    <div className="mb-8 bg-blue-50 border border-blue-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
+                        <div className="bg-blue-100 p-2 rounded-full h-fit shrink-0">
+                            <Clock className="text-blue-600" size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-blue-900 text-lg">Menunggu Review</h3>
+                            <p className="text-blue-700 mt-1 leading-relaxed">
+                                SKP Anda sedang ditinjau oleh pejabat penilai. Anda akan menerima notifikasi setelah review selesai.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="font-semibold text-blue-900 text-lg">Menunggu Review</h3>
-                        <p className="text-blue-700 mt-1 leading-relaxed">
-                            SKP Anda sedang ditinjau oleh pejabat penilai. Anda akan menerima notifikasi setelah review selesai.
-                        </p>
-                    </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Confirmation Modal */}
             <ConfirmationModal
@@ -539,30 +433,26 @@ const SubmitSKP = () => {
             />
 
             {/* PORTAL TOOLBAR */}
-            {portalTarget && createPortal(
-                <div className="w-full flex justify-center animate-in fade-in zoom-in duration-300">
-                    <div className="max-w-2xl w-full">
-                        <Toolbar
-                            editor={activeEditor}
-                            selectedEditors={selectedEditors}
-                            onMerge={onMergeClick}
-                            onUnmerge={onUnmergeClick}
-                            onUndo={handleUndo}
-                            onRedo={handleRedo}
-                            canUndo={canUndo}
-                            canRedo={canRedo}
-                        />
-                    </div>
-                </div>,
-                portalTarget
-            )}
+            {
+                portalTarget && createPortal(
+                    <div className="w-full flex justify-center animate-in fade-in zoom-in duration-300">
+                        <div className="max-w-2xl w-full">
+                            <Toolbar
+                                editor={activeEditor}
+                                selectedEditors={selectedEditors}
+                            />
+                        </div>
+                    </div>,
+                    portalTarget
+                )
+            }
 
             {/* Page Title & Status */}
             <div className="mb-6 flex justify-between items-end">
             </div>
 
             {/* Top Info Card */}
-            <SKPHeader employee={user} evaluator={evaluator} />
+            <SKPHeader employee={effectiveUser} evaluator={evaluator} />
 
             {/* SECTION 1: HASIL KERJA */}
             <SectionHeader title="Hasil Kerja" />
@@ -604,20 +494,22 @@ const SubmitSKP = () => {
 
 
             {/* Submit Button */}
-            {!isReadOnly && skpStatus !== 'Approved' && (
-                <div className="mt-10 flex justify-end gap-4 border-t pt-6">
-                    <Button
-                        variant="primary"
-                        size="lg"
-                        className="w-full sm:w-auto shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-base px-8"
-                        onClick={() => setShowConfirm(true)}
-                        icon={Send}
-                    >
-                        Ajukan Rencana SKP
-                    </Button>
-                </div>
-            )}
-        </div>
+            {
+                !isReadOnly && skpStatus !== 'Approved' && (
+                    <div className="mt-10 flex justify-end gap-4 border-t pt-6">
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            className="w-full sm:w-auto shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-base px-8"
+                            onClick={() => setShowConfirm(true)}
+                            icon={Send}
+                        >
+                            Ajukan Rencana SKP
+                        </Button>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

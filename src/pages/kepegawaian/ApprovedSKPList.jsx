@@ -330,6 +330,47 @@ const ApprovedSKPList = () => {
                     isLoading={loading}
                 />
             </div>
+
+            {/* Rejection Modal */}
+            <Modal
+                isOpen={rejectModalOpen}
+                onClose={() => setRejectModalOpen(false)}
+                title="Reject SKP"
+                size="md"
+            >
+                <div>
+                    <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm mb-4">
+                        Tindakan ini akan mengembalikan status SKP menjadi <strong>"Rejected"</strong>.
+                        Pegawai akan diminta untuk merevisi SKP berdasarkan catatan yang anda berikan.
+                    </div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Catatan Revisi <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        value={rejectionNote}
+                        onChange={(e) => setRejectionNote(e.target.value)}
+                        placeholder="Tuliskan alasan penolakan atau poin yang perlu direvisi..."
+                        className="w-full h-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm resize-none"
+                    />
+                    <div className="flex justify-end gap-3 mt-6">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setRejectModalOpen(false)}
+                            disabled={isSubmitting}
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleReject}
+                            isLoading={isSubmitting}
+                            className="bg-red-600 hover:bg-red-700 text-white border-transparent"
+                        >
+                            Konfirmasi Reject
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

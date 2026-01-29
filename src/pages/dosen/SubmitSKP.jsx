@@ -22,10 +22,12 @@ const SectionHeader = ({ title }) => (
 // ... (INITIAL_FORM_STATE remains the same)
 const INITIAL_FORM_STATE = {
     utama: [
-        { id: 1, columns: ['<p>Tuliskan rencana kinerja utama anda disini...</p>'] }
+        { id: 1, columns: [''], isSubRow: false },
+        { id: 2, columns: [''], isSubRow: true, parentId: 1 }
     ],
     tambahan: [
-        { id: 1, columns: [''] }
+        { id: 1, columns: [''], isSubRow: false },
+        { id: 2, columns: [''], isSubRow: true, parentId: 1 }
     ],
     dukungan: [
         { id: 1, columns: [''] }

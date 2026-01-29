@@ -305,6 +305,7 @@ const SKPSection = ({
     onSelectionChange,
     columnHeaders, // Optional array of strings for custom headers
     isPerilakuMode = false, // Enable special layout for behaviors (merged 2nd column)
+    simpleRow = false
 }) => {
     const [colCount, setColCount] = useState(1);
     const [colWidths, setColWidths] = useState(['100%']);
@@ -507,46 +508,57 @@ const SKPSection = ({
         const timestamp = Date.now();
         let newRowsToAdd = [];
 
-        // Check if the last row is a Main Row (missing its sub-row)
-        const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
-        if (lastRow && !lastRow.isSubRow) {
-            // Fill the missing sub-row for the orphaned main row
-            const missingSubRow = {
+        if (simpleRow) {
+            const mainRow = {
                 id: timestamp,
-                parentId: lastRow.id,
+                columns: Array(colCount).fill(''),
+                borderStyle: 'bold',
+                isSubRow: false
+            };
+            newRowsToAdd.push(mainRow);
+        } else {
+            // Check if the last row is a Main Row (missing its sub-row)
+            const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
+            if (lastRow && !lastRow.isSubRow) {
+                // Fill the missing sub-row for the orphaned main row
+                const missingSubRow = {
+                    id: timestamp,
+                    parentId: lastRow.id,
+                    columns: Array(colCount).fill(''),
+                    borderStyle: 'bold',
+                    isSubRow: true,
+                    // If Perilaku Mode, hide second column for sub row
+                    colHiddens: isPerilakuMode ? [1] : []
+                };
+                newRowsToAdd.push(missingSubRow);
+            }
+
+            // Add a fresh new pair (Main + Sub)
+            // Use an offset for IDs to prevent collision with the checks above
+            const baseId = timestamp + newRowsToAdd.length + 100;
+
+            const mainRow = {
+                id: baseId,
+                columns: Array(colCount).fill(''),
+                borderStyle: 'bold',
+                isSubRow: false,
+                // If Perilaku Mode, rowSpan=2 for second column
+                rowSpans: isPerilakuMode ? [1, 2] : [],
+            };
+
+            const subRow = {
+                id: baseId + 1,
+                parentId: baseId, // Link to the new main row
                 columns: Array(colCount).fill(''),
                 borderStyle: 'bold',
                 isSubRow: true,
-                // If Perilaku Mode, hide second column for sub row
+                // If Perilaku Mode, hide second column
                 colHiddens: isPerilakuMode ? [1] : []
             };
-            newRowsToAdd.push(missingSubRow);
+
+            newRowsToAdd.push(mainRow, subRow);
         }
 
-        // Add a fresh new pair (Main + Sub)
-        // Use an offset for IDs to prevent collision with the checks above
-        const baseId = timestamp + newRowsToAdd.length + 100;
-
-        const mainRow = {
-            id: baseId,
-            columns: Array(colCount).fill(''),
-            borderStyle: 'bold',
-            isSubRow: false,
-            // If Perilaku Mode, rowSpan=2 for second column
-            rowSpans: isPerilakuMode ? [1, 2] : [],
-        };
-
-        const subRow = {
-            id: baseId + 1,
-            parentId: baseId, // Link to the new main row
-            columns: Array(colCount).fill(''),
-            borderStyle: 'bold',
-            isSubRow: true,
-            // If Perilaku Mode, hide second column
-            colHiddens: isPerilakuMode ? [1] : []
-        };
-
-        newRowsToAdd.push(mainRow, subRow);
         onChange([...rows, ...newRowsToAdd]);
     };
 

@@ -17,9 +17,57 @@ import {
     Printer,
     Download,
     Lock,
-    Star
+    Star,
+    XCircle,
+    AlertTriangle,
+    ThumbsUp,
+    ChevronDown,
+    X
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+
+const RATING_OPTIONS = [
+    {
+        value: 'Sangat Buruk',
+        label: 'Sangat Buruk',
+        color: 'text-red-700',
+        bg: 'bg-red-50',
+        hoverBg: 'hover:bg-red-50',
+        border: 'border-red-200',
+        ring: 'focus:ring-red-500',
+        icon: XCircle
+    },
+    {
+        value: 'Buruk',
+        label: 'Buruk',
+        color: 'text-orange-700',
+        bg: 'bg-orange-50',
+        hoverBg: 'hover:bg-orange-50',
+        border: 'border-orange-200',
+        ring: 'focus:ring-orange-500',
+        icon: AlertTriangle
+    },
+    {
+        value: 'Baik',
+        label: 'Baik',
+        color: 'text-blue-700',
+        bg: 'bg-blue-50',
+        hoverBg: 'hover:bg-blue-50',
+        border: 'border-blue-200',
+        ring: 'focus:ring-blue-500',
+        icon: ThumbsUp
+    },
+    {
+        value: 'Sangat Baik',
+        label: 'Sangat Baik',
+        color: 'text-emerald-700',
+        bg: 'bg-emerald-50',
+        hoverBg: 'hover:bg-emerald-50',
+        border: 'border-emerald-200',
+        ring: 'focus:ring-emerald-500',
+        icon: Star
+    },
+];
 
 const ReviewRealisasi = () => {
     const { id } = useParams();
@@ -33,6 +81,8 @@ const ReviewRealisasi = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [openDropdown, setOpenDropdown] = useState(null); // Track which dropdown is open
     const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+    const [showFinalDialog, setShowFinalDialog] = useState(false);
+    const [finalRating, setFinalRating] = useState('Baik'); // Default to Baik
 
     const returnTo = location.state?.returnTo || '/kepegawaian/evaluations';
 
@@ -142,13 +192,14 @@ const ReviewRealisasi = () => {
 
 
 
-    const handleFinalize = async () => {
+    const handleFinalizeClick = () => {
         if (!skp) return;
-        if (!confirm('Apakah anda yakin ingin MEMFINALISASI SKP ini? SKP yang sudah difinalisasi tidak dapat diubah lagi.')) return;
+        setShowFinalDialog(true);
+    };
 
+    const onConfirmFinalize = async () => {
         setIsSubmitting(true);
         try {
-            // Update same as review but set status to Approved
             const updatedRealisasi = { ...skp.realisasi };
             Object.keys(feedback).forEach(sectionKey => {
                 if (updatedRealisasi[sectionKey]) {
@@ -163,12 +214,14 @@ const ReviewRealisasi = () => {
 
             await api.skps.update(skp.id, {
                 realisasi: updatedRealisasi,
-                realisasiStatus: 'Approved', // Final status
+                realisasiStatus: 'Approved',
                 realisasiReviewedAt: new Date().toISOString(),
-                realisasiReviewerId: user.id
+                realisasiReviewerId: user.id,
+                predikatAkhir: finalRating // Include the selected final rating
             });
 
             toast.success('SKP berhasil difinalisasi!');
+            setShowFinalDialog(false);
             navigate(returnTo);
         } catch (error) {
             console.error('Failed to finalize:', error);
@@ -339,88 +392,128 @@ const ReviewRealisasi = () => {
                                                     rowSpan={groupRowCount}
                                                     style={{ height: '1px' }}
                                                 >
-                                                    {skp.realisasiStatus === 'Approved' ? (
-                                                        <div className="text-sm p-3 text-gray-700 bg-gray-50/50 flex items-center gap-2">
-                                                            <Star size={14} className="text-green-600 flex-shrink-0" fill="currentColor" />
-                                                            <span>{feedback[sectionKey]?.[group.startIndex]?.rating || '-'}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="p-3">
-                                                            {feedback[sectionKey]?.[group.startIndex]?.rating ? (
-                                                                // Show selected value as text but clickable
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                                        setDropdownPos({
-                                                                            top: rect.bottom,
-                                                                            left: rect.left
-                                                                        });
-                                                                        const key = `${sectionKey}-${group.startIndex}`;
-                                                                        setOpenDropdown(openDropdown === key ? null : key);
-                                                                    }}
-                                                                    className="text-sm text-gray-700 flex items-center gap-2 hover:bg-gray-100 p-1.5 rounded transition-colors"
-                                                                >
-                                                                    <Star size={14} className="text-green-600 flex-shrink-0" fill="currentColor" />
-                                                                    <span>{feedback[sectionKey]?.[group.startIndex]?.rating}</span>
-                                                                </button>
-                                                            ) : (
-                                                                // Show button dropdown
-                                                                <div className="relative no-print">
+                                                    {(() => {
+                                                        const currentRatingValue = feedback[sectionKey]?.[group.startIndex]?.rating;
+                                                        const selectedOption = RATING_OPTIONS.find(r => r.value === currentRatingValue);
+                                                        const RatingIcon = selectedOption ? selectedOption.icon : Star;
+                                                        const isApproved = skp.realisasiStatus === 'Approved';
+
+                                                        if (isApproved) {
+                                                            return (
+                                                                <div className={`text-sm p-3 h-full flex items-center gap-2 ${selectedOption ? selectedOption.bg : 'bg-gray-50/50'}`}>
+                                                                    {selectedOption ? (
+                                                                        <>
+                                                                            <RatingIcon size={16} className={selectedOption.color} />
+                                                                            <span className={`font-medium ${selectedOption.color}`}>{selectedOption.label}</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <span className="text-gray-500">-</span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <div className="p-3">
+                                                                {currentRatingValue ? (
                                                                     <button
                                                                         type="button"
                                                                         onClick={(e) => {
                                                                             const rect = e.currentTarget.getBoundingClientRect();
+                                                                            const spaceBelow = window.innerHeight - rect.bottom;
+                                                                            const showAbove = spaceBelow < 250;
                                                                             setDropdownPos({
-                                                                                top: rect.bottom,
-                                                                                left: rect.left
+                                                                                top: showAbove ? 'auto' : rect.bottom + 8,
+                                                                                bottom: showAbove ? window.innerHeight - rect.top + 8 : 'auto',
+                                                                                right: window.innerWidth - rect.right
                                                                             });
                                                                             const key = `${sectionKey}-${group.startIndex}`;
                                                                             setOpenDropdown(openDropdown === key ? null : key);
                                                                         }}
-                                                                        className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-green-500 rounded bg-white hover:bg-green-50 transition-colors text-xs font-medium text-gray-700"
+                                                                        className={`w-full text-sm flex items-center gap-2 p-2 rounded-lg border transition-all ${selectedOption ? `${selectedOption.bg} ${selectedOption.border}` : 'bg-white border-gray-200'} hover:shadow-sm group`}
                                                                     >
-                                                                        <Star size={12} className="text-green-600" fill="currentColor" />
-                                                                        <span>Pilih</span>
+                                                                        {selectedOption && <RatingIcon size={16} className={selectedOption.color} />}
+                                                                        <span className={`font-medium ${selectedOption ? selectedOption.color : 'text-gray-700'}`}>
+                                                                            {selectedOption ? selectedOption.label : currentRatingValue}
+                                                                        </span>
+                                                                        <ChevronDown size={14} className={`ml-auto opacity-50 group-hover:opacity-100 ${selectedOption ? selectedOption.color : 'text-gray-400'}`} />
                                                                     </button>
-                                                                </div>
-                                                            )}
-
-                                                            {openDropdown === `${sectionKey}-${group.startIndex}` && createPortal(
-                                                                <>
-                                                                    <div
-                                                                        className="fixed inset-0 z-[9999]"
-                                                                        onClick={() => setOpenDropdown(null)}
-                                                                    />
-                                                                    <div
-                                                                        className="fixed z-[9999] bg-white border-2 border-green-500 rounded-lg shadow-lg min-w-[140px]"
-                                                                        style={{
-                                                                            top: `${dropdownPos.top + 5}px`, // Slight offset
-                                                                            left: `${dropdownPos.left}px`
-                                                                        }}
-                                                                    >
-                                                                        {['Sangat Buruk', 'Buruk', 'Baik', 'Sangat Baik'].map((option) => (
-                                                                            <button
-                                                                                key={option}
-                                                                                type="button"
-                                                                                onClick={() => {
-                                                                                    handleRatingChange(sectionKey, group.startIndex, option);
-                                                                                    setOpenDropdown(null);
-                                                                                }}
-                                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-green-50 transition-colors first:rounded-t-md last:rounded-b-md text-gray-700"
-                                                                            >
-                                                                                {option}
-                                                                            </button>
-                                                                        ))}
+                                                                ) : (
+                                                                    <div className="relative no-print">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                                const spaceBelow = window.innerHeight - rect.bottom;
+                                                                                const showAbove = spaceBelow < 250;
+                                                                                setDropdownPos({
+                                                                                    top: showAbove ? 'auto' : rect.bottom + 8,
+                                                                                    bottom: showAbove ? window.innerHeight - rect.top + 8 : 'auto',
+                                                                                    right: window.innerWidth - rect.right
+                                                                                });
+                                                                                const key = `${sectionKey}-${group.startIndex}`;
+                                                                                setOpenDropdown(openDropdown === key ? null : key);
+                                                                            }}
+                                                                            className="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-primary hover:border-primary hover:bg-purple-50 transition-all text-xs font-medium"
+                                                                        >
+                                                                            <span className="flex items-center gap-2">
+                                                                                <Star size={14} />
+                                                                                <span>Beri Nilai</span>
+                                                                            </span>
+                                                                            <ChevronDown size={14} />
+                                                                        </button>
                                                                     </div>
-                                                                </>,
-                                                                document.body
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    <div className="hidden print:block text-sm p-3">
-                                                        {feedback[sectionKey]?.[group.startIndex]?.rating || '-'}
-                                                    </div>
+                                                                )}
+
+                                                                {openDropdown === `${sectionKey}-${group.startIndex}` && createPortal(
+                                                                    <>
+                                                                        <div
+                                                                            className="fixed inset-0 z-[9999]"
+                                                                            onClick={() => setOpenDropdown(null)}
+                                                                        />
+                                                                        <div
+                                                                            className="fixed z-[9999] bg-white border border-gray-100 rounded-xl shadow-xl min-w-[180px] overflow-hidden p-1 animate-in zoom-in-95 duration-100"
+                                                                            style={{
+                                                                                top: dropdownPos.top === 'auto' ? 'auto' : `${dropdownPos.top}px`,
+                                                                                bottom: dropdownPos.bottom === 'auto' ? 'auto' : `${dropdownPos.bottom}px`,
+                                                                                right: `${dropdownPos.right}px`
+                                                                            }}
+                                                                        >
+                                                                            <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                                                                                Pilih Penilaian
+                                                                            </div>
+                                                                            {RATING_OPTIONS.map((option) => {
+                                                                                const Icon = option.icon;
+                                                                                const isSelected = currentRatingValue === option.value;
+                                                                                return (
+                                                                                    <button
+                                                                                        key={option.value}
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            handleRatingChange(sectionKey, group.startIndex, option.value);
+                                                                                            setOpenDropdown(null);
+                                                                                        }}
+                                                                                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all flex items-center gap-3 mb-0.5
+                                                                                            ${isSelected ? `${option.bg} ${option.color} font-medium` : `text-gray-600 hover:bg-gray-50`}
+                                                                                        `}
+                                                                                    >
+                                                                                        <div className={`p-1.5 rounded-full ${isSelected ? 'bg-white/50' : 'bg-gray-100 group-hover:bg-white'}`}>
+                                                                                            <Icon size={14} className={isSelected ? option.color : 'text-gray-500'} />
+                                                                                        </div>
+                                                                                        {option.label}
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </>,
+                                                                    document.body
+                                                                )}
+                                                                <div className="hidden print:block text-sm mt-1 p-2">
+                                                                    {currentRatingValue || '-'}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </td>
                                             )}
                                         </tr>
@@ -539,9 +632,9 @@ const ReviewRealisasi = () => {
                             </Button>
                             <Button
                                 variant="primary"
-                                onClick={handleFinalize}
+                                onClick={handleFinalizeClick}
                                 isLoading={isSubmitting}
-                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+                                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-none shadow-md shadow-emerald-200 transition-all hover:shadow-lg hover:shadow-emerald-300 transform hover:-translate-y-0.5"
                             >
                                 <Lock size={16} />
                                 Setujui & Finalisasi
@@ -550,6 +643,85 @@ const ReviewRealisasi = () => {
                     )}
                 </div>
             </div>
+            {/* Finalize Confirmation Dialog */}
+            {showFinalDialog && createPortal(
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                <Lock size={18} className="text-emerald-600" />
+                                Konfirmasi Finalisasi
+                            </h3>
+                            <button
+                                onClick={() => setShowFinalDialog(false)}
+                                className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-6">
+                            <div className="flex gap-4 p-4 bg-amber-50 rounded-xl border border-amber-100 text-amber-800">
+                                <AlertTriangle className="shrink-0 mt-0.5" size={20} />
+                                <div className="text-sm">
+                                    <p className="font-semibold mb-1">Perhatian!</p>
+                                    <p>Tindakan ini tidak dapat dibatalkan. Pastikan semua penilaian dan umpan balik sudah sesuai.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="block text-sm font-semibold text-gray-700">Predikat Akhir SKP</label>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {RATING_OPTIONS.map((option) => {
+                                        const Icon = option.icon;
+                                        const isSelected = finalRating === option.value;
+                                        return (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => setFinalRating(option.value)}
+                                                className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${isSelected
+                                                    ? `${option.border} ${option.bg} ring-1 ring-offset-1 ${option.ring}`
+                                                    : 'border-transparent bg-gray-50 hover:bg-gray-100 text-gray-600'
+                                                    }`}
+                                            >
+                                                <div className={`p-2 rounded-full ${isSelected ? 'bg-white' : 'bg-gray-200'} transition-colors`}>
+                                                    <Icon size={18} className={isSelected ? option.color : 'text-gray-500'} />
+                                                </div>
+                                                <span className={`font-semibold ${isSelected ? option.color : 'text-gray-600'}`}>
+                                                    {option.label}
+                                                </span>
+                                                {isSelected && <CheckCircle size={18} className={`ml-auto ${option.color}`} />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowFinalDialog(false)}
+                                disabled={isSubmitting}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                onClick={onConfirmFinalize}
+                                isLoading={isSubmitting}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 border-none"
+                            >
+                                <Lock size={16} className="mr-2" />
+                                Ya, Finalisasi SKP
+                            </Button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

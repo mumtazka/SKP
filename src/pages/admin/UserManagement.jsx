@@ -20,7 +20,7 @@ const UserManagement = () => {
     const [pangkatOptions, setPangkatOptions] = useState([]);
     const [jabatanOptions, setJabatanOptions] = useState([]);
     const [formData, setFormData] = useState({
-        username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: '', pangkat: '', jabatan: ''
+        username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: '', pangkat: '', jabatan: '', identityNumber: ''
     });
 
     const fetchUsers = async () => {
@@ -81,7 +81,9 @@ const UserManagement = () => {
             }
             setIsModalOpen(false);
             setEditingUser(null);
-            setFormData({ username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: '', pangkat: '', jabatan: '' });
+            setEditingUser(null);
+            setFormData({ username: '', fullName: '', email: '', password: '', role: 'dosen', departmentId: '', pangkat: '', jabatan: '', identityNumber: '' });
+            fetchUsers();
             fetchUsers();
         } catch (err) {
             toast.error(err.message);
@@ -98,7 +100,8 @@ const UserManagement = () => {
             role: user.role,
             departmentId: user.departmentId || '',
             pangkat: user.pangkat || '',
-            jabatan: user.jabatan || ''
+            jabatan: user.jabatan || '',
+            identityNumber: user.identityNumber || ''
         });
         setIsModalOpen(true);
     };
@@ -235,6 +238,14 @@ const UserManagement = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
+                            <label className="text-sm font-medium">NIP / Identity Number</label>
+                            <Input
+                                value={formData.identityNumber}
+                                onChange={(e) => setFormData({ ...formData, identityNumber: e.target.value })}
+                                placeholder="NIP. 19xxxxxxxxxx"
+                            />
+                        </div>
+                        <div className="space-y-2">
                             <label className="text-sm font-medium">Email</label>
                             <Input
                                 type="email"
@@ -243,16 +254,16 @@ const UserManagement = () => {
                                 required
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Kata Sandi</label>
-                            <Input
-                                type="text"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                required={!editingUser}
-                                placeholder={editingUser ? "Kosongkan untuk tetap" : "Masukkan kata sandi"}
-                            />
-                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Kata Sandi</label>
+                        <Input
+                            type="text"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            required={!editingUser}
+                            placeholder={editingUser ? "Kosongkan untuk tetap" : "Masukkan kata sandi"}
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">

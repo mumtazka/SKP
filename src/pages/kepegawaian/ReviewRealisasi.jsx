@@ -25,6 +25,8 @@ import {
     X
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import SKPSection from '../dosen/components/SKPSection';
+import Toolbar from '@/pages/dosen/components/Toolbar';
 
 const RATING_OPTIONS = [
     {
@@ -79,10 +81,21 @@ const ReviewRealisasi = () => {
     const [loading, setLoading] = useState(true);
     const [feedback, setFeedback] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [openDropdown, setOpenDropdown] = useState(null); // Track which dropdown is open
+
+    // Perilaku Kerja State (Dynamic Rows)
+    const [perilakuRows, setPerilakuRows] = useState([]);
+
+    const [activeEditor, setActiveEditor] = useState(null);
+    const [activeSection, setActiveSection] = useState(null); // Track active section for Toolbar context
+
+    const [openDropdown, setOpenDropdown] = useState(null);
     const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
     const [showFinalDialog, setShowFinalDialog] = useState(false);
-    const [finalRating, setFinalRating] = useState('Baik'); // Default to Baik
+    const [finalRating, setFinalRating] = useState('Baik');
+
+    // Check permissions
+    const isReviewer = skp && user && skp.userId !== user.id; // User is reviewing someone else's SKP
+    const canEditPerilaku = isReviewer && skp?.realisasiStatus !== 'Approved';
 
     const returnTo = location.state?.returnTo || '/kepegawaian/evaluations';
 
@@ -97,7 +110,7 @@ const ReviewRealisasi = () => {
             const data = await api.skps.getById(id);
             setSkp(data);
 
-            // Initialize feedback from existing realisasi data
+            // Initialize feedback logic...
             const existingFeedback = {};
             if (data.realisasi) {
                 Object.keys(data.realisasi).forEach(sectionKey => {
@@ -112,6 +125,19 @@ const ReviewRealisasi = () => {
                 });
             }
             setFeedback(existingFeedback);
+
+            // Initialize Perilaku Data
+            // If empty, set default structure: 1 Main Row + 1 Sub Row (2 Pairs hardcoded for ease?)
+            // Or just one pair.
+            let initialPerilaku = data.perilaku;
+            if (!initialPerilaku || !Array.isArray(initialPerilaku) || initialPerilaku.length === 0) {
+                initialPerilaku = [
+                    { id: 1, columns: ['', ''], isSubRow: false, rowSpans: [1, 2] },
+                    { id: 2, columns: ['', ''], isSubRow: true, parentId: 1, colHiddens: [1] }
+                ];
+            }
+            setPerilakuRows(initialPerilaku);
+
         } catch (error) {
             console.error('Failed to load SKP:', error);
             toast.error('Gagal memuat data SKP');
@@ -123,16 +149,9 @@ const ReviewRealisasi = () => {
     const handleFeedbackChange = (sectionKey, rowIndex, value) => {
         setFeedback(prev => {
             const updated = { ...prev };
-            if (!updated[sectionKey]) {
-                updated[sectionKey] = [];
-            }
-            if (!updated[sectionKey][rowIndex]) {
-                updated[sectionKey][rowIndex] = { id: rowIndex, umpanBalik: '', rating: '' };
-            }
-            updated[sectionKey][rowIndex] = {
-                ...updated[sectionKey][rowIndex],
-                umpanBalik: value
-            };
+            if (!updated[sectionKey]) updated[sectionKey] = [];
+            if (!updated[sectionKey][rowIndex]) updated[sectionKey][rowIndex] = { id: rowIndex, umpanBalik: '', rating: '' };
+            updated[sectionKey][rowIndex] = { ...updated[sectionKey][rowIndex], umpanBalik: value };
             return updated;
         });
     };
@@ -140,16 +159,9 @@ const ReviewRealisasi = () => {
     const handleRatingChange = (sectionKey, rowIndex, value) => {
         setFeedback(prev => {
             const updated = { ...prev };
-            if (!updated[sectionKey]) {
-                updated[sectionKey] = [];
-            }
-            if (!updated[sectionKey][rowIndex]) {
-                updated[sectionKey][rowIndex] = { id: rowIndex, umpanBalik: '', rating: '' };
-            }
-            updated[sectionKey][rowIndex] = {
-                ...updated[sectionKey][rowIndex],
-                rating: value
-            };
+            if (!updated[sectionKey]) updated[sectionKey] = [];
+            if (!updated[sectionKey][rowIndex]) updated[sectionKey][rowIndex] = { id: rowIndex, umpanBalik: '', rating: '' };
+            updated[sectionKey][rowIndex] = { ...updated[sectionKey][rowIndex], rating: value };
             return updated;
         });
     };
@@ -159,9 +171,7 @@ const ReviewRealisasi = () => {
 
         setIsSubmitting(true);
         try {
-            // Merge feedback into realisasi data
             const updatedRealisasi = { ...skp.realisasi };
-
             Object.keys(feedback).forEach(sectionKey => {
                 if (updatedRealisasi[sectionKey]) {
                     feedback[sectionKey].forEach((fb, index) => {
@@ -175,6 +185,7 @@ const ReviewRealisasi = () => {
 
             await api.skps.update(skp.id, {
                 realisasi: updatedRealisasi,
+                perilaku: perilakuRows, // Save dynamic rows
                 realisasiStatus: 'Reviewed',
                 realisasiReviewedAt: new Date().toISOString(),
                 realisasiReviewerId: user.id
@@ -189,8 +200,6 @@ const ReviewRealisasi = () => {
             setIsSubmitting(false);
         }
     };
-
-
 
     const handleFinalizeClick = () => {
         if (!skp) return;
@@ -214,20 +223,24 @@ const ReviewRealisasi = () => {
 
             await api.skps.update(skp.id, {
                 realisasi: updatedRealisasi,
+                perilaku: perilakuRows, // Save dynamic rows
+                predikatAkhir: finalRating,
                 realisasiStatus: 'Approved',
                 realisasiReviewedAt: new Date().toISOString(),
                 realisasiReviewerId: user.id,
-                predikatAkhir: finalRating // Include the selected final rating
+                approvedAt: new Date().toISOString(),
+                evaluatorId: user.id
             });
 
             toast.success('SKP berhasil difinalisasi!');
             setShowFinalDialog(false);
             navigate(returnTo);
         } catch (error) {
-            console.error('Failed to finalize:', error);
+            console.error('Failed to finalize SKP:', error);
             toast.error('Gagal memfinalisasi SKP');
         } finally {
             setIsSubmitting(false);
+            setShowFinalDialog(false);
         }
     };
 
@@ -610,6 +623,39 @@ const ReviewRealisasi = () => {
 
                 {renderSection('utama', 'A. Utama', skp.details?.utama, skp.realisasi?.utama)}
                 {renderSection('tambahan', 'B. Tambahan', skp.details?.tambahan, skp.realisasi?.tambahan)}
+            </div>
+
+            {/* PERILAKU KERJA SECTION (DYNAMIC) */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 w-full relative">
+                {/* Sticky Header with Title and Toolbar */}
+                <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-20 py-3 mb-2 border-b border-gray-100 transition-all">
+                    <div className="flex justify-between items-center gap-4 min-h-[42px]">
+                        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 shrink-0">
+                            <User size={20} className="text-primary" />
+                            Perilaku Kerja
+                        </h2>
+
+                        {/* Toolbar - Only visible if active editor in this section */}
+                        {activeEditor && activeSection === 'perilaku' && canEditPerilaku && (
+                            <div className="animate-in slide-in-from-right-2 duration-200">
+                                <Toolbar editor={activeEditor} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <SKPSection
+                    title="Perilaku Kerja"
+                    rows={perilakuRows}
+                    onChange={(newRows) => setPerilakuRows(newRows)}
+                    onEditorFocus={setActiveEditor}
+                    readOnly={!canEditPerilaku}
+                    showNumbers={true}
+                    isActiveSection={activeSection === 'perilaku'}
+                    onSectionActive={() => setActiveSection('perilaku')}
+                    columnHeaders={['Perilaku Kerja', 'Ekspektasi Khusus']}
+                    isPerilakuMode={true}
+                />
             </div>
 
             {/* Action Button */}

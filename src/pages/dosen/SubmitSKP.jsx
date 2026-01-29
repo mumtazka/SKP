@@ -601,24 +601,7 @@ const SubmitSKP = () => {
                 }}
             />
 
-            {/* SECTION 2: PERILAKU KERJA */}
-            <SectionHeader title="Perilaku Kerja" />
 
-            <SKPSection
-                title="1. Berorientasi Pelayanan"
-                rows={data.dukungan || []}
-                onChange={(newRows, isTextUpdate) => updateSectionWithType('dukungan', newRows, isTextUpdate)}
-                onEditorFocus={setActiveEditor}
-                readOnly={isReadOnly}
-                isActiveSection={activeSection === 'dukungan'}
-                onSectionActive={() => setActiveSection('dukungan')}
-                onSelectionChange={(editors, range) => {
-                    if (activeSection === 'dukungan') {
-                        setSelectedEditors(editors);
-                        setSelectionRange(range);
-                    }
-                }}
-            />
 
             {/* Submit Button */}
             {!isReadOnly && skpStatus !== 'Approved' && (

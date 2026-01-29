@@ -195,6 +195,7 @@ const RowItem = ({
     onCellMouseDown,
     onCellMouseEnter,
     isCellSelected,
+    isPerilakuMode = false, // Received from parent
 }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
@@ -214,6 +215,22 @@ const RowItem = ({
 
     // Sub rows have slightly different styling
     const rowBgClass = isSubRow ? 'bg-purple-50/50' : 'bg-white';
+
+    // Helper for placeholder
+    const getPlaceholder = (colIndex) => {
+        if (!isPerilakuMode) {
+            return isSubRow ? 'isikan indikator...' : 'isikan rencana kegiatan...';
+        }
+
+        // Perilaku Mode Logic
+        if (colIndex === 0) {
+            return isSubRow ? 'isikan indikator penilaian...' : 'isikan perilaku kerja...';
+        }
+        if (colIndex === 1) {
+            return 'isikan ekspektasi pimpinan...';
+        }
+        return '...';
+    };
 
     return (
         <tr className={`${borderClass} border-b border-purple-200 last:border-b-0 group transition-all ${rowBgClass}`}>
@@ -236,7 +253,7 @@ const RowItem = ({
                     colSpan={colSpans[colIndex] || 1}
                     rowSpan={rowSpans[colIndex] || 1}
                     isHidden={colHiddens.includes(colIndex)}
-                    placeholder={isSubRow ? 'isikan indikator...' : 'isikan rencana kegiatan...'}
+                    placeholder={getPlaceholder(colIndex)}
                     onUpdate={(newHtml) => {
                         const newCols = [...columns];
                         newCols[colIndex] = newHtml;
@@ -299,7 +316,9 @@ const SKPSection = ({
     readOnly = false,
     isActiveSection,
     onSectionActive,
-    onSelectionChange
+    onSelectionChange,
+    columnHeaders, // Optional array of strings for custom headers
+    isPerilakuMode = false, // Enable special layout for behaviors (merged 2nd column)
 }) => {
     const [colCount, setColCount] = useState(1);
     const [colWidths, setColWidths] = useState(['100%']);
@@ -507,11 +526,13 @@ const SKPSection = ({
         if (lastRow && !lastRow.isSubRow) {
             // Fill the missing sub-row for the orphaned main row
             const missingSubRow = {
-                id: timestamp, // ID for the missing sub row
+                id: timestamp,
                 parentId: lastRow.id,
                 columns: Array(colCount).fill(''),
                 borderStyle: 'bold',
-                isSubRow: true
+                isSubRow: true,
+                // If Perilaku Mode, hide second column for sub row
+                colHiddens: isPerilakuMode ? [1] : []
             };
             newRowsToAdd.push(missingSubRow);
         }
@@ -524,7 +545,9 @@ const SKPSection = ({
             id: baseId,
             columns: Array(colCount).fill(''),
             borderStyle: 'bold',
-            isSubRow: false
+            isSubRow: false,
+            // If Perilaku Mode, rowSpan=2 for second column
+            rowSpans: isPerilakuMode ? [1, 2] : [],
         };
 
         const subRow = {
@@ -532,7 +555,9 @@ const SKPSection = ({
             parentId: baseId, // Link to the new main row
             columns: Array(colCount).fill(''),
             borderStyle: 'bold',
-            isSubRow: true
+            isSubRow: true,
+            // If Perilaku Mode, hide second column
+            colHiddens: isPerilakuMode ? [1] : []
         };
 
         newRowsToAdd.push(mainRow, subRow);
@@ -676,7 +701,9 @@ const SKPSection = ({
                             {Array.from({ length: colCount }).map((_, i) => (
                                 <th key={i} className="border-r border-purple-200 last:border-r-0 py-1.5 px-2 text-left relative group align-middle font-normal">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-primary uppercase truncate">Kolom {i + 1}</span>
+                                        <span className="text-xs font-bold text-primary uppercase truncate">
+                                            {columnHeaders && columnHeaders[i] ? columnHeaders[i] : `Kolom ${i + 1}`}
+                                        </span>
                                     </div>
                                     {!readOnly && i < colCount - 1 && (
                                         <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-purple-400 z-10" onMouseDown={(e) => startResize(i, e)}>
@@ -689,45 +716,37 @@ const SKPSection = ({
                         </tr>
                     </thead>
                     <tbody className="bg-white">
-                        {(() => {
-                            let mainRowNumber = 0;
-                            return rows.map((row, index) => {
-                                // Only increment number for main rows
-                                if (!row.isSubRow) {
-                                    mainRowNumber++;
-                                }
-                                return (
-                                    <RowItem
-                                        key={row.id}
-                                        rowIndex={index}
-                                        displayNumber={row.isSubRow ? '' : mainRowNumber}
-                                        isSubRow={row.isSubRow || false}
-                                        columns={row.columns || []}
-                                        colSpans={row.colSpans || []}
-                                        rowSpans={row.rowSpans || []}
-                                        colHiddens={row.colHiddens || []}
-                                        onUpdate={(newCols) => {
-                                            if (readOnly) return;
-                                            const next = [...rows];
-                                            next[index] = { ...next[index], columns: newCols };
-                                            onChange(next, true);
-                                        }}
-                                        onFocus={onEditorFocus}
-                                        onDelete={() => handleDeleteRow(index)}
-                                        onSetBorder={(s) => handleSetRowBorder(index, s)}
-                                        readOnly={readOnly}
-                                        showNumbers={showNumbers}
-                                        borderStyle={row.borderStyle}
-                                        onRegisterEditor={handleRegisterEditor}
-                                        onUnregisterEditor={handleUnregisterEditor}
-                                        onCellKeyDown={handleCellKeyDown}
-                                        onCellMouseDown={handleCellMouseDown}
-                                        onCellMouseEnter={handleCellMouseEnter}
-                                        isCellSelected={isCellSelected}
-                                    />
-                                );
-                            });
-                        })()}
+                        {rows.map((row, index) => (
+                            <RowItem
+                                key={row.id}
+                                rowIndex={index}
+                                columns={row.columns}
+                                colSpans={row.colSpans}
+                                rowSpans={row.rowSpans}
+                                colHiddens={row.colHiddens}
+                                displayNumber={row.isSubRow ? '' : (rows.filter((r, i) => i <= index && !r.isSubRow).length)}
+                                isSubRow={row.isSubRow}
+                                onUpdate={(newColumns) => {
+                                    const newRows = [...rows];
+                                    newRows[index].columns = newColumns;
+                                    onChange(newRows);
+                                }}
+                                onFocus={(editor) => onEditorFocus && onEditorFocus(editor)}
+                                onDelete={() => handleDeleteRow(index)}
+                                onSetBorder={(style) => handleSetRowBorder(index, style)}
+                                isActive={isActiveSection}
+                                readOnly={readOnly}
+                                showNumbers={showNumbers}
+                                borderStyle={row.borderStyle || 'bold'}
+                                onRegisterEditor={handleRegisterEditor}
+                                onUnregisterEditor={handleUnregisterEditor}
+                                onCellKeyDown={(e, r, c, ed) => handleCellKeyDown(e, rows[index].id, c, ed)}
+                                onCellMouseDown={handleCellMouseDown}
+                                onCellMouseEnter={handleCellMouseEnter}
+                                isCellSelected={isCellSelected}
+                                isPerilakuMode={isPerilakuMode}
+                            />
+                        ))}
                     </tbody>
                 </table>
             </div>

@@ -185,22 +185,32 @@ const KepegawaianDashboard = () => {
                 )}
 
                 <div className="space-y-3 px-4">
-                    {items.map((item, idx) => (
-                        <div key={idx} className="flex gap-4 border-b border-gray-100 pb-3 last:border-0 text-sm text-gray-700">
-                            <div className="w-6 font-semibold text-gray-400 shrink-0 select-none pt-1">{idx + 1}.</div>
+                    {(() => {
+                        let mainCounter = 0;
+                        return items.map((item, idx) => {
+                            const isMainRow = !item.isSubRow;
+                            if (isMainRow) mainCounter++;
 
-                            {/* Dynamic Grid for Columns */}
-                            <div className={`flex-1 grid gap-4 ${item.columns?.length > 1 ? `grid-cols-${item.columns.length}` : 'grid-cols-1'}`}>
-                                {(item.columns || [item.content]).map((col, cIdx) => (
-                                    <div
-                                        key={cIdx}
-                                        className="prose prose-sm max-w-none prose-purple bg-white p-3 rounded border border-gray-50 shadow-sm"
-                                        dangerouslySetInnerHTML={{ __html: col || '<span class="text-gray-400 italic">Kosong</span>' }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                            return (
+                                <div key={idx} className="flex gap-4 border-b border-gray-100 pb-3 last:border-0 text-sm text-gray-700">
+                                    <div className="w-6 font-semibold text-gray-400 shrink-0 select-none pt-1">
+                                        {isMainRow ? `${mainCounter}.` : ''}
+                                    </div>
+
+                                    {/* Dynamic Grid for Columns */}
+                                    <div className={`flex-1 grid gap-4 ${item.columns?.length > 1 ? `grid-cols-${item.columns.length}` : 'grid-cols-1'}`}>
+                                        {(item.columns || [item.content]).map((col, cIdx) => (
+                                            <div
+                                                key={cIdx}
+                                                className="prose prose-sm max-w-none prose-purple bg-white p-3 rounded border border-gray-50 shadow-sm [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                                                dangerouslySetInnerHTML={{ __html: col || '<span class="text-gray-400 italic">Kosong</span>' }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        });
+                    })()}
                 </div>
             </div>
         );

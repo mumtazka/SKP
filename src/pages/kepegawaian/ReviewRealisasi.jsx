@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
@@ -15,7 +16,8 @@ import {
     FileText,
     Printer,
     Download,
-    Lock
+    Lock,
+    Star
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
@@ -29,6 +31,8 @@ const ReviewRealisasi = () => {
     const [loading, setLoading] = useState(true);
     const [feedback, setFeedback] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [openDropdown, setOpenDropdown] = useState(null); // Track which dropdown is open
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
 
     const returnTo = location.state?.returnTo || '/kepegawaian/evaluations';
 
@@ -48,10 +52,11 @@ const ReviewRealisasi = () => {
             if (data.realisasi) {
                 Object.keys(data.realisasi).forEach(sectionKey => {
                     existingFeedback[sectionKey] = data.realisasi[sectionKey]?.map(row => {
-                        if (!row) return { id: null, umpanBalik: '' };
+                        if (!row) return { id: null, umpanBalik: '', rating: '' };
                         return {
                             id: row.id,
-                            umpanBalik: row.umpanBalik || ''
+                            umpanBalik: row.umpanBalik || '',
+                            rating: row.rating || ''
                         };
                     }) || [];
                 });
@@ -72,11 +77,28 @@ const ReviewRealisasi = () => {
                 updated[sectionKey] = [];
             }
             if (!updated[sectionKey][rowIndex]) {
-                updated[sectionKey][rowIndex] = { id: rowIndex, umpanBalik: '' };
+                updated[sectionKey][rowIndex] = { id: rowIndex, umpanBalik: '', rating: '' };
             }
             updated[sectionKey][rowIndex] = {
                 ...updated[sectionKey][rowIndex],
                 umpanBalik: value
+            };
+            return updated;
+        });
+    };
+
+    const handleRatingChange = (sectionKey, rowIndex, value) => {
+        setFeedback(prev => {
+            const updated = { ...prev };
+            if (!updated[sectionKey]) {
+                updated[sectionKey] = [];
+            }
+            if (!updated[sectionKey][rowIndex]) {
+                updated[sectionKey][rowIndex] = { id: rowIndex, umpanBalik: '', rating: '' };
+            }
+            updated[sectionKey][rowIndex] = {
+                ...updated[sectionKey][rowIndex],
+                rating: value
             };
             return updated;
         });
@@ -95,6 +117,7 @@ const ReviewRealisasi = () => {
                     feedback[sectionKey].forEach((fb, index) => {
                         if (updatedRealisasi[sectionKey][index]) {
                             updatedRealisasi[sectionKey][index].umpanBalik = fb.umpanBalik;
+                            updatedRealisasi[sectionKey][index].rating = fb.rating;
                         }
                     });
                 }
@@ -132,6 +155,7 @@ const ReviewRealisasi = () => {
                     feedback[sectionKey].forEach((fb, index) => {
                         if (updatedRealisasi[sectionKey][index]) {
                             updatedRealisasi[sectionKey][index].umpanBalik = fb.umpanBalik;
+                            updatedRealisasi[sectionKey][index].rating = fb.rating;
                         }
                     });
                 }
@@ -217,16 +241,18 @@ const ReviewRealisasi = () => {
                     <table className="w-full border-collapse">
                         <colgroup>
                             <col style={{ width: '40px' }} />
-                            <col style={{ width: '40%' }} />
-                            <col style={{ width: '30%' }} />
-                            <col style={{ width: '30%' }} />
+                            <col style={{ width: '38%' }} />
+                            <col style={{ width: '27%' }} />
+                            <col style={{ width: '25%' }} />
+                            <col style={{ width: '10%' }} />
                         </colgroup>
                         <thead>
                             <tr className="bg-blue-100 border-b border-blue-300">
                                 <th className="border-r border-blue-300 py-2 px-2 text-xs font-bold text-blue-800 text-center">No</th>
                                 <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Rencana Kinerja</th>
                                 <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Realisasi</th>
-                                <th className="py-2 px-3 text-xs font-bold text-blue-800 text-left">Umpan Balik</th>
+                                <th className="border-r border-blue-300 py-2 px-3 text-xs font-bold text-blue-800 text-left">Umpan Balik</th>
+                                <th className="py-2 px-3 text-xs font-bold text-blue-800 text-left">Nilai</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -283,7 +309,7 @@ const ReviewRealisasi = () => {
                                             {/* Feedback - Only show for first row in group, with rowSpan */}
                                             {isFirstInGroup && (
                                                 <td
-                                                    className="p-0 align-top"
+                                                    className="border-r border-blue-200 p-0 align-top"
                                                     rowSpan={groupRowCount}
                                                     style={{ height: '1px' }}
                                                 >
@@ -302,6 +328,98 @@ const ReviewRealisasi = () => {
                                                     )}
                                                     <div className="hidden print:block text-sm p-3 min-h-[100px] whitespace-pre-wrap">
                                                         {feedback[sectionKey]?.[group.startIndex]?.umpanBalik || '-'}
+                                                    </div>
+                                                </td>
+                                            )}
+
+                                            {/* Rating - Only show for first row in group, with rowSpan */}
+                                            {isFirstInGroup && (
+                                                <td
+                                                    className="p-0 align-top"
+                                                    rowSpan={groupRowCount}
+                                                    style={{ height: '1px' }}
+                                                >
+                                                    {skp.realisasiStatus === 'Approved' ? (
+                                                        <div className="text-sm p-3 text-gray-700 bg-gray-50/50 flex items-center gap-2">
+                                                            <Star size={14} className="text-green-600 flex-shrink-0" fill="currentColor" />
+                                                            <span>{feedback[sectionKey]?.[group.startIndex]?.rating || '-'}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-3">
+                                                            {feedback[sectionKey]?.[group.startIndex]?.rating ? (
+                                                                // Show selected value as text but clickable
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        const rect = e.currentTarget.getBoundingClientRect();
+                                                                        setDropdownPos({
+                                                                            top: rect.bottom,
+                                                                            left: rect.left
+                                                                        });
+                                                                        const key = `${sectionKey}-${group.startIndex}`;
+                                                                        setOpenDropdown(openDropdown === key ? null : key);
+                                                                    }}
+                                                                    className="text-sm text-gray-700 flex items-center gap-2 hover:bg-gray-100 p-1.5 rounded transition-colors"
+                                                                >
+                                                                    <Star size={14} className="text-green-600 flex-shrink-0" fill="currentColor" />
+                                                                    <span>{feedback[sectionKey]?.[group.startIndex]?.rating}</span>
+                                                                </button>
+                                                            ) : (
+                                                                // Show button dropdown
+                                                                <div className="relative no-print">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                                            setDropdownPos({
+                                                                                top: rect.bottom,
+                                                                                left: rect.left
+                                                                            });
+                                                                            const key = `${sectionKey}-${group.startIndex}`;
+                                                                            setOpenDropdown(openDropdown === key ? null : key);
+                                                                        }}
+                                                                        className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-green-500 rounded bg-white hover:bg-green-50 transition-colors text-xs font-medium text-gray-700"
+                                                                    >
+                                                                        <Star size={12} className="text-green-600" fill="currentColor" />
+                                                                        <span>Pilih</span>
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                            {openDropdown === `${sectionKey}-${group.startIndex}` && createPortal(
+                                                                <>
+                                                                    <div
+                                                                        className="fixed inset-0 z-[9999]"
+                                                                        onClick={() => setOpenDropdown(null)}
+                                                                    />
+                                                                    <div
+                                                                        className="fixed z-[9999] bg-white border-2 border-green-500 rounded-lg shadow-lg min-w-[140px]"
+                                                                        style={{
+                                                                            top: `${dropdownPos.top + 5}px`, // Slight offset
+                                                                            left: `${dropdownPos.left}px`
+                                                                        }}
+                                                                    >
+                                                                        {['Sangat Buruk', 'Buruk', 'Baik', 'Sangat Baik'].map((option) => (
+                                                                            <button
+                                                                                key={option}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    handleRatingChange(sectionKey, group.startIndex, option);
+                                                                                    setOpenDropdown(null);
+                                                                                }}
+                                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-green-50 transition-colors first:rounded-t-md last:rounded-b-md text-gray-700"
+                                                                            >
+                                                                                {option}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </>,
+                                                                document.body
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    <div className="hidden print:block text-sm p-3">
+                                                        {feedback[sectionKey]?.[group.startIndex]?.rating || '-'}
                                                     </div>
                                                 </td>
                                             )}

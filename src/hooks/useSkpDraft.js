@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 const STORAGE_KEY_PREFIX = 'skp_draft_';
 
-export const useSkpDraft = (initialData) => {
+export const useSkpDraft = (initialData, uniqueKey = '') => {
     const { user } = useAuth();
     const [data, setData] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
@@ -15,27 +15,27 @@ export const useSkpDraft = (initialData) => {
     // Initial Load
     useEffect(() => {
         if (!user) return;
-        const saved = localStorage.getItem(STORAGE_KEY_PREFIX + user.id);
+        const keySuffix = uniqueKey ? `_${uniqueKey}` : '';
+        const saved = localStorage.getItem(STORAGE_KEY_PREFIX + user.id + keySuffix);
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
                 setData(parsed);
-                toast.info("Draft restored from last session");
+                // toast.info("Draft restored from last session"); // Optional: Removed to reduce noise or keep it
             } catch (e) {
                 console.error("Failed to parse draft", e);
             }
         } else {
-            // If no draft, ensure we have the structure but don't overwrite if initialData provided meaningful defaults?
-            // Actually initialData usually has structure.
             setData(initialData);
         }
-    }, [user]);
+    }, [user, uniqueKey, initialData]);
 
     // Save Logic
     const saveToStorage = useCallback(
-        debounce((dataToSave, userId) => {
+        debounce((dataToSave, userId, uKey) => {
             if (!userId) return;
-            localStorage.setItem(STORAGE_KEY_PREFIX + userId, JSON.stringify(dataToSave));
+            const keySuffix = uKey ? `_${uKey}` : '';
+            localStorage.setItem(STORAGE_KEY_PREFIX + userId + keySuffix, JSON.stringify(dataToSave));
             setLastSaved(new Date());
             setIsSaving(false);
         }, 1500),
@@ -49,16 +49,26 @@ export const useSkpDraft = (initialData) => {
                 ...prev,
                 [sectionKey]: updateFn(prev[sectionKey])
             };
-            saveToStorage(newData, user?.id);
+            saveToStorage(newData, user?.id, uniqueKey);
             return newData;
         });
     };
 
     const clearDraft = () => {
         if (user) {
-            localStorage.removeItem(STORAGE_KEY_PREFIX + user.id);
+            const keySuffix = uniqueKey ? `_${uniqueKey}` : '';
+            localStorage.removeItem(STORAGE_KEY_PREFIX + user.id + keySuffix);
+            setData(initialData); // Reset data to initial state
         }
     };
+
+    // Auto-save effect
+    useEffect(() => {
+        if (data && user) {
+            setIsSaving(true);
+            saveToStorage(data, user.id, uniqueKey);
+        }
+    }, [data, user, uniqueKey, saveToStorage]);
 
     return {
         data,

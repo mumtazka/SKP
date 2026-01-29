@@ -65,9 +65,6 @@ const EditorCell = ({
             }
         },
         onFocus: ({ editor }) => {
-            if (autoList && !editor.isActive('bulletList')) {
-                editor.commands.toggleBulletList();
-            }
             if (!readOnly && onFocusRef.current) {
                 onFocusRef.current(editor);
             }
@@ -90,6 +87,26 @@ const EditorCell = ({
             if (onUnregister) onUnregister(rowIndex, colIndex);
         };
     }, [editor, rowIndex, colIndex, onRegister, onUnregister]);
+
+    // Auto-initialize list on (re)load if autoList is enabled
+    useEffect(() => {
+        if (editor && !editor.isDestroyed && autoList) {
+            if (!editor.isActive('bulletList')) {
+                editor.commands.toggleBulletList();
+
+                // Clean up any initial BRs to prevent visual gaps
+                setTimeout(() => {
+                    if (!editor || editor.isDestroyed) return;
+                    const editorEl = editor.view.dom;
+                    const paragraphs = editorEl.querySelectorAll('li p');
+                    paragraphs.forEach(p => {
+                        const brs = p.querySelectorAll('br');
+                        brs.forEach(br => br.remove());
+                    });
+                }, 0);
+            }
+        }
+    }, [editor, autoList]);
 
     useEffect(() => {
         if (editor && content !== editor.getHTML()) {
@@ -124,7 +141,7 @@ const EditorCell = ({
             <div className="h-full w-full relative">
                 <EditorContent
                     editor={editor}
-                    className={`prose prose-sm prose-purple max-w-none p-2.5 min-h-[45px] outline-none text-sm w-full h-full [&_p]:!my-0 [&_li]:!my-0 [&_ul]:!my-0 [&_ol]:!my-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
+                    className={`prose prose-sm prose-purple max-w-none p-2.5 min-h-[45px] outline-none text-sm w-full h-full [&_p]:!my-0 [&_li]:!my-0 [&_ul]:!my-0 [&_ul]:!m-0 [&_ol]:!my-0 [&_ol]:!m-0 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li::before]:!hidden ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
                     style={{ lineHeight: '1.4' }}
                 />
             </div>

@@ -498,9 +498,9 @@ const SubmitSKP = () => {
                 !isReadOnly && skpStatus !== 'Approved' && (
                     <div className="mt-10 flex justify-end gap-4 border-t pt-6">
                         <Button
-                            variant="primary"
+                            variant="gradient"
                             size="lg"
-                            className="w-full sm:w-auto shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-base px-8"
+                            className="w-full sm:w-auto shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all text-base px-8 font-bold tracking-wide"
                             onClick={() => setShowConfirm(true)}
                             icon={Send}
                         >

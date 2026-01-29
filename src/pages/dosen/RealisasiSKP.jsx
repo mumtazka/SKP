@@ -9,6 +9,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
 import Toolbar from './components/Toolbar'; // Reuse existing toolbar
+import SKPSection from './components/SKPSection';
 import {
     FileText,
     CheckCircle,
@@ -87,6 +88,7 @@ const RealisasiSKP = () => {
     const [loading, setLoading] = useState(true);
     const [selectedSkp, setSelectedSkp] = useState(null);
     const [realisasiData, setRealisasiData] = useState({});
+    const [detailsData, setDetailsData] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -129,6 +131,13 @@ const RealisasiSKP = () => {
                 const latest = approved[0];
                 setSelectedSkp(latest);
                 setRealisasiData(latest.realisasi || initializeRealisasi(latest.details));
+
+                // Initialize local details state for Lampiran
+                setDetailsData({
+                    dukungan: latest.details?.dukungan || [],
+                    skema: latest.details?.skema || [],
+                    konsekuensi: latest.details?.konsekuensi || []
+                });
             }
         } catch (error) {
             console.error('Failed to load SKPs:', error);
@@ -155,6 +164,7 @@ const RealisasiSKP = () => {
                 umpanBalik: row.umpanBalik || ''
             }));
         }
+        // Initialize Lampiran Sections - REMOVED (Handled by detailsData now)
 
         return realisasi;
     };
@@ -176,14 +186,25 @@ const RealisasiSKP = () => {
         });
     };
 
+    const handleDetailsChange = (sectionKey, newRows) => {
+        setDetailsData(prev => ({
+            ...prev,
+            [sectionKey]: newRows
+        }));
+    };
+
     const handleSaveDraft = async () => {
         if (!selectedSkp) return;
         setIsSaving(true);
         try {
             await api.skps.update(selectedSkp.id, {
-                realisasi: realisasiData
+                realisasi: realisasiData,
+                details: {
+                    ...selectedSkp.details,
+                    ...detailsData
+                }
             });
-            toast.success('Draft realisasi berhasil disimpan');
+            toast.success('Draft berhasil disimpan');
         } catch (error) {
             toast.error('Gagal menyimpan draft');
         } finally {
@@ -194,11 +215,14 @@ const RealisasiSKP = () => {
     const handleSubmitRealisasi = async () => {
         if (!selectedSkp) return;
 
+        // Check if any realisasi field is filled
         const hasRealisasi = Object.values(realisasiData).some(section =>
-            section?.some(row => row?.realisasi?.trim())
+            Array.isArray(section) && section.some(row => row?.realisasi?.trim())
         );
 
         if (!hasRealisasi) {
+            // Check if user edited lampiran at least? 
+            // For now, strict check on Realisasi input of Hasil Kerja
             toast.error('Mohon isi minimal satu realisasi sebelum mengirim');
             return;
         }
@@ -207,6 +231,10 @@ const RealisasiSKP = () => {
         try {
             await api.skps.update(selectedSkp.id, {
                 realisasi: realisasiData,
+                details: {
+                    ...selectedSkp.details,
+                    ...detailsData
+                },
                 realisasiStatus: 'Pending',
                 realisasiSubmittedAt: new Date().toISOString()
             });
@@ -458,6 +486,13 @@ const RealisasiSKP = () => {
                             const skp = approvedSkps.find(s => s.id === e.target.value);
                             setSelectedSkp(skp);
                             setRealisasiData(skp?.realisasi || initializeRealisasi(skp?.details));
+                            if (skp) {
+                                setDetailsData({
+                                    dukungan: skp.details?.dukungan || [],
+                                    skema: skp.details?.skema || [],
+                                    konsekuensi: skp.details?.konsekuensi || []
+                                });
+                            }
                         }}
                         className="w-full max-w-md px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     >
@@ -470,13 +505,16 @@ const RealisasiSKP = () => {
                 </div>
             )}
 
-            {/* STICKY TOOLBAR (Safety Fallback) */}
-            {selectedSkp && (!selectedSkp.realisasiStatus || !['Pending'].includes(selectedSkp.realisasiStatus)) && (
-                <div className="sticky top-16 z-40 bg-white/95 backdrop-blur shadow-md border border-blue-200 rounded-lg p-1.5 mb-4 mx-1 animate-in fade-in slide-in-from-top-4">
-                    <Toolbar
-                        editor={activeEditor}
-                    />
-                </div>
+            {/* PORTAL TOOLBAR */}
+            {selectedSkp && (!selectedSkp.realisasiStatus || !['Pending'].includes(selectedSkp.realisasiStatus)) && portalTarget && createPortal(
+                <div className="w-full flex justify-center animate-in fade-in zoom-in duration-300">
+                    <div className="max-w-2xl w-full">
+                        <Toolbar
+                            editor={activeEditor}
+                        />
+                    </div>
+                </div>,
+                portalTarget
             )}
 
             {/* Main Content */}
@@ -518,6 +556,53 @@ const RealisasiSKP = () => {
                         <div className="p-4">
                             {renderSection('utama', 'A. Utama', selectedSkp.details?.utama)}
                             {renderSection('tambahan', 'B. Tambahan', selectedSkp.details?.tambahan)}
+                        </div>
+                    </div>
+
+                    {/* Lampiran Section Header */}
+                    <div className="bg-blue-600 text-white font-bold py-2 px-4 rounded-t-lg text-sm uppercase tracking-wider mt-6">
+                        LAMPIRAN SASARAN KINERJA PEGAWAI
+                    </div>
+
+                    {/* Lampiran Sections (Editable via SKPSection) */}
+                    <div className="bg-white rounded-b-2xl border border-t-0 border-gray-100 shadow-sm overflow-hidden mb-6">
+                        <div className="p-4">
+                            <div className="mb-4">
+                                <SKPSection
+                                    title="1. Dukungan Sumber Daya"
+                                    rows={detailsData.dukungan}
+                                    onChange={(newRows) => handleDetailsChange('dukungan', newRows)}
+                                    onEditorFocus={setActiveEditor}
+                                    readOnly={!isEditable}
+                                    simpleRow={true}
+                                    showNumbers={true}
+                                    columnHeaders={['Dukungan Sumber Daya']}
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <SKPSection
+                                    title="2. Skema Pertanggungjawaban"
+                                    rows={detailsData.skema}
+                                    onChange={(newRows) => handleDetailsChange('skema', newRows)}
+                                    onEditorFocus={setActiveEditor}
+                                    readOnly={!isEditable}
+                                    simpleRow={true}
+                                    showNumbers={true}
+                                    columnHeaders={['Skema Pertanggungjawaban']}
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <SKPSection
+                                    title="3. Konsekuensi"
+                                    rows={detailsData.konsekuensi}
+                                    onChange={(newRows) => handleDetailsChange('konsekuensi', newRows)}
+                                    onEditorFocus={setActiveEditor}
+                                    readOnly={!isEditable}
+                                    simpleRow={true}
+                                    showNumbers={true}
+                                    columnHeaders={['Konsekuensi']}
+                                />
+                            </div>
                         </div>
                     </div>
 

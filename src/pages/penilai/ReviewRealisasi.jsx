@@ -1000,6 +1000,48 @@ const ReviewRealisasi = () => {
                 />
             </div>
 
+            {/* Lampiran Section (Read Only) */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <FileText size={20} className="text-primary" />
+                    Lampiran Sasaran Kinerja Pegawai
+                </h2>
+
+                {/* C.1 Dukungan Sumber Daya */}
+                <div className="mb-4">
+                    <SKPSection
+                        title="1. Dukungan Sumber Daya"
+                        rows={skp.details?.dukungan}
+                        readOnly={true}
+                        simpleRow={true}
+                        showNumbers={true}
+                        columnHeaders={['Dukungan Sumber Daya']}
+                    />
+                </div>
+                {/* C.2 Skema Pertanggungjawaban */}
+                <div className="mb-4">
+                    <SKPSection
+                        title="2. Skema Pertanggungjawaban"
+                        rows={skp.details?.skema}
+                        readOnly={true}
+                        simpleRow={true}
+                        showNumbers={true}
+                        columnHeaders={['Skema Pertanggungjawaban']}
+                    />
+                </div>
+                {/* C.3 Konsekuensi */}
+                <div className="mb-4">
+                    <SKPSection
+                        title="3. Konsekuensi"
+                        rows={skp.details?.konsekuensi}
+                        readOnly={true}
+                        simpleRow={true}
+                        showNumbers={true}
+                        columnHeaders={['Konsekuensi']}
+                    />
+                </div>
+            </div>
+
             {/* Action Button */}
             <div className="flex justify-end items-center pt-4 border-t border-gray-100 no-print">
                 <div className="flex gap-4">

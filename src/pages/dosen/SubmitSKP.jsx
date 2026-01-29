@@ -496,9 +496,8 @@ const SubmitSKP = () => {
 
             {/* C.1 Dukungan Sumber Daya */}
             <div className="mb-4">
-                <h4 className="font-bold text-gray-700 mb-2 px-1">1. Dukungan Sumber Daya</h4>
                 <SKPSection
-                    title=""
+                    title="1. Dukungan Sumber Daya"
                     rows={data.dukungan}
                     onChange={(newRows, isTextUpdate) => updateSectionWithType('dukungan', newRows, isTextUpdate)}
                     onEditorFocus={setActiveEditor}
@@ -520,9 +519,8 @@ const SubmitSKP = () => {
 
             {/* C.2 Skema Pertanggungjawaban */}
             <div className="mb-4">
-                <h4 className="font-bold text-gray-700 mb-2 px-1">2. Skema Pertanggungjawaban</h4>
                 <SKPSection
-                    title=""
+                    title="2. Skema Pertanggungjawaban"
                     rows={data.skema}
                     onChange={(newRows, isTextUpdate) => updateSectionWithType('skema', newRows, isTextUpdate)}
                     onEditorFocus={setActiveEditor}
@@ -544,9 +542,8 @@ const SubmitSKP = () => {
 
             {/* C.3 Konsekuensi */}
             <div className="mb-4">
-                <h4 className="font-bold text-gray-700 mb-2 px-1">3. Konsekuensi</h4>
                 <SKPSection
-                    title=""
+                    title="3. Konsekuensi"
                     rows={data.konsekuensi}
                     onChange={(newRows, isTextUpdate) => updateSectionWithType('konsekuensi', newRows, isTextUpdate)}
                     onEditorFocus={setActiveEditor}

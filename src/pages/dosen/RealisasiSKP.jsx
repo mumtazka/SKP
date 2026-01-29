@@ -260,15 +260,22 @@ const RealisasiSKP = () => {
 
         // Group rows: numbered row starts a new group, sub-rows (no number) belong to previous group
         const groups = [];
+        let mainRowCounter = 0;
         let currentGroup = null;
 
         rows.forEach((row, index) => {
-            const hasNumber = row.number && row.number.trim() !== '';
+            // New Logic: Use isSubRow to detect main rows
+            // If isSubRow is undefined (legacy data), assume it's a main row if it's the first one or alternate? 
+            // Better: The migration tool we made earlier ensures isSubRow exists.
+            // If !isSubRow => It's a main row ("No 1", "No 2", etc.)
 
-            if (hasNumber) {
+            const isMainRow = !row.isSubRow;
+
+            if (isMainRow) {
+                mainRowCounter++;
                 // Start a new group
                 currentGroup = {
-                    number: row.number,
+                    number: mainRowCounter, // Assign dynamic number
                     rows: [{ ...row, originalIndex: index }],
                     startIndex: index
                 };
@@ -277,9 +284,11 @@ const RealisasiSKP = () => {
                 // Add to current group (sub-row)
                 currentGroup.rows.push({ ...row, originalIndex: index });
             } else {
-                // No current group yet (edge case: first row has no number)
+                // Orphaned sub-row (shouldn't happen with correct logic, but handle gracefully)
+                // Treat as main row if we have no group yet
+                mainRowCounter++;
                 currentGroup = {
-                    number: '',
+                    number: mainRowCounter,
                     rows: [{ ...row, originalIndex: index }],
                     startIndex: index
                 };
@@ -340,7 +349,7 @@ const RealisasiSKP = () => {
                                             {/* Plan Content - Each row has its own content */}
                                             <td className="border-r border-blue-200 p-0 align-top">
                                                 <div
-                                                    className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px]"
+                                                    className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px] [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                                                     dangerouslySetInnerHTML={{ __html: planContent }}
                                                 />
                                             </td>
@@ -360,7 +369,7 @@ const RealisasiSKP = () => {
                                                         />
                                                     ) : (
                                                         <div
-                                                            className="p-3 text-sm text-gray-700 min-h-[80px] bg-gray-50 prose prose-sm max-w-none"
+                                                            className="p-3 text-sm text-gray-700 min-h-[80px] bg-gray-50 prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                                                             dangerouslySetInnerHTML={{
                                                                 __html: realisasiRow.realisasi || '<span class="text-gray-400 italic">-</span>'
                                                             }}

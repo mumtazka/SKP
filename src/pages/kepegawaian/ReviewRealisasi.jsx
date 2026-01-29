@@ -256,26 +256,29 @@ const ReviewRealisasi = () => {
 
         // Group rows: numbered row starts a new group, sub-rows (no number) belong to previous group
         const groups = [];
+        let mainRowCounter = 0;
         let currentGroup = null;
 
         planRows.forEach((row, index) => {
-            const hasNumber = row.number && row.number.trim() !== '';
+            const isMainRow = !row.isSubRow;
 
-            if (hasNumber) {
+            if (isMainRow) {
+                mainRowCounter++;
                 // Start a new group
                 currentGroup = {
-                    number: row.number,
+                    number: mainRowCounter,
                     rows: [{ ...row, originalIndex: index }],
                     startIndex: index
                 };
                 groups.push(currentGroup);
             } else if (currentGroup) {
-                // Add to current group (sub-row)
+                // Add to current group
                 currentGroup.rows.push({ ...row, originalIndex: index });
             } else {
-                // No current group yet (edge case: first row has no number)
+                // Fallback for orphaned first row detection if data is weird
+                mainRowCounter++;
                 currentGroup = {
-                    number: '',
+                    number: mainRowCounter,
                     rows: [{ ...row, originalIndex: index }],
                     startIndex: index
                 };
@@ -338,7 +341,7 @@ const ReviewRealisasi = () => {
                                             {/* Plan Content */}
                                             <td className="border-r border-blue-200 p-0 align-top">
                                                 <div
-                                                    className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px]"
+                                                    className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px] [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                                                     dangerouslySetInnerHTML={{ __html: planContent }}
                                                 />
                                             </td>
@@ -351,7 +354,7 @@ const ReviewRealisasi = () => {
                                                 >
                                                     {/* Use data from the start index of the group */}
                                                     <div
-                                                        className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px] bg-white h-full"
+                                                        className="prose prose-sm max-w-none text-gray-700 p-3 min-h-[60px] bg-white h-full [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                                                         dangerouslySetInnerHTML={{
                                                             __html: realisasiRows?.[group.startIndex]?.realisasi || '<span class="text-gray-400 italic">Belum diisi</span>'
                                                         }}

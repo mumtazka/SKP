@@ -126,7 +126,7 @@ const EditorCell = ({
             <div className="h-full w-full relative">
                 <EditorContent
                     editor={editor}
-                    className={`prose prose-sm prose-purple max-w-none p-2.5 min-h-[45px] outline-none text-sm w-full h-full [&_p]:!my-0 [&_li]:!my-0 [&_ul]:!my-0 [&_ol]:!my-0 ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
+                    className={`prose prose-sm prose-purple max-w-none p-2.5 min-h-[45px] outline-none text-sm w-full h-full [&_p]:!my-0 [&_li]:!my-0 [&_ul]:!my-0 [&_ol]:!my-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
                     style={{ lineHeight: '1.4' }}
                 />
             </div>

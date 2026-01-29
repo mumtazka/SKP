@@ -162,8 +162,8 @@ const Evaluations = () => {
                     <button
                         onClick={() => setActiveTab('pending')}
                         className={`flex-1 px-6 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${activeTab === 'pending'
-                                ? 'text-primary border-b-2 border-primary bg-purple-50/50'
-                                : 'text-gray-500 hover:text-gray-700'
+                            ? 'text-primary border-b-2 border-primary bg-purple-50/50'
+                            : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         <Clock size={16} />
@@ -172,8 +172,8 @@ const Evaluations = () => {
                     <button
                         onClick={() => setActiveTab('reviewed')}
                         className={`flex-1 px-6 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${activeTab === 'reviewed'
-                                ? 'text-primary border-b-2 border-primary bg-purple-50/50'
-                                : 'text-gray-500 hover:text-gray-700'
+                            ? 'text-primary border-b-2 border-primary bg-purple-50/50'
+                            : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         <CheckCircle size={16} />

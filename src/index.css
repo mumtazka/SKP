@@ -200,3 +200,13 @@
         max-width: none !important;
     }
 }
+/* Enhanced Placeholder for Lists */
+.tiptap p.is-empty::before {
+    color: #a78bfa; /* purple-400 */
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    font-weight: 700;
+    text-transform: uppercase;
+}

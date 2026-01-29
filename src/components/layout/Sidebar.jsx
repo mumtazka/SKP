@@ -14,7 +14,8 @@ import {
     ChevronLeft,
     ChevronRight,
     PieChart,
-    Building
+    Building,
+    Calendar
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
@@ -49,6 +50,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
 
             // Admin features
             { name: 'Assign Rater', icon: Users, path: '/admin/assign' },
+            { name: 'Periode SKP', icon: Calendar, path: '/admin/period-settings' },
 
             // Dosen features (view as user)
             { name: 'Ajukan SKP', icon: FileText, path: '/dosen/submit' },
@@ -58,6 +60,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
             { name: 'User Management', icon: Users, path: '/admin/users' },
             { name: 'Data Master', icon: Building, path: '/admin/master-data' },
             { name: 'Assign Rater', icon: Users, path: '/admin/assign' },
+            { name: 'Periode SKP', icon: Calendar, path: '/admin/period-settings' },
         ]
     };
 

@@ -11,6 +11,7 @@ import Toolbar from './components/Toolbar';
 import { useSkpDraft } from '@/hooks/useSkpDraft';
 import { Button } from '@/components/common/Button';
 import useHistory from '@/hooks/useHistory';
+import { usePeriod } from '@/context/PeriodContext';
 
 // ... (SectionHeader component remains the same)
 const SectionHeader = ({ title }) => (
@@ -79,6 +80,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, isSubmitting }) => {
 const SubmitSKP = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { periodConfig, periodLabel, loading: periodLoading } = usePeriod();
     const [evaluator, setEvaluator] = useState(null);
     const [activeEditor, setActiveEditor] = useState(null); // Keep for backwards compat if needed, or focused single
     const [selectedEditors, setSelectedEditors] = useState([]); // Array of selected Tiptap instances
@@ -454,7 +456,14 @@ const SubmitSKP = () => {
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Formulir Rencana SKP</h1>
-                    <p className="text-gray-500 text-sm mt-1">Periode Tahun {currentYear}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+                            <span className="font-semibold text-gray-800">{periodConfig?.year || new Date().getFullYear()}</span>
+                            <span className="border-l border-gray-300 pl-2">
+                                {periodLabel || 'Memuat periode...'}
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-500 bg-white/50 px-4 py-2 rounded-full border border-gray-100 shadow-sm backdrop-blur-sm">
                     {!isReadOnly && (

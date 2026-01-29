@@ -768,6 +768,54 @@ export const api = {
                 departmentId: data.department_id
             };
         }
+    },
+
+    // ==================== SETTINGS ====================
+    settings: {
+        get: async (key) => {
+            const { data, error } = await supabase
+                .from('settings')
+                .select('value')
+                .eq('key', key)
+                .maybeSingle();
+
+            if (error) throw error;
+            return data?.value || null;
+        },
+
+        set: async (key, value) => {
+            const { data, error } = await supabase
+                .from('settings')
+                .upsert(
+                    { key, value, updated_at: new Date().toISOString() },
+                    { onConflict: 'key' }
+                )
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        },
+
+        // Convenience method for period
+        getPeriodConfig: async () => {
+            const value = await api.settings.get('skp_period');
+            if (!value) {
+                // Return default: current year annual
+                const year = new Date().getFullYear();
+                return {
+                    type: 'annual',
+                    year,
+                    startDate: `${year}-01-01`,
+                    endDate: `${year}-12-31`
+                };
+            }
+            return value;
+        },
+
+        setPeriodConfig: async (config) => {
+            return api.settings.set('skp_period', config);
+        }
     }
 };
 

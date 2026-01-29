@@ -500,22 +500,43 @@ const SKPSection = ({
     const handleAddRow = () => {
         if (readOnly) return;
         const timestamp = Date.now();
-        // Create main row
+        let newRowsToAdd = [];
+
+        // Check if the last row is a Main Row (missing its sub-row)
+        const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
+        if (lastRow && !lastRow.isSubRow) {
+            // Fill the missing sub-row for the orphaned main row
+            const missingSubRow = {
+                id: timestamp, // ID for the missing sub row
+                parentId: lastRow.id,
+                columns: Array(colCount).fill(''),
+                borderStyle: 'bold',
+                isSubRow: true
+            };
+            newRowsToAdd.push(missingSubRow);
+        }
+
+        // Add a fresh new pair (Main + Sub)
+        // Use an offset for IDs to prevent collision with the checks above
+        const baseId = timestamp + newRowsToAdd.length + 100;
+
         const mainRow = {
-            id: timestamp,
+            id: baseId,
             columns: Array(colCount).fill(''),
             borderStyle: 'bold',
             isSubRow: false
         };
-        // Create sub row (linked to main row)
+
         const subRow = {
-            id: timestamp + 1,
-            parentId: timestamp, // Link to main row
+            id: baseId + 1,
+            parentId: baseId, // Link to the new main row
             columns: Array(colCount).fill(''),
             borderStyle: 'bold',
             isSubRow: true
         };
-        onChange([...rows, mainRow, subRow]);
+
+        newRowsToAdd.push(mainRow, subRow);
+        onChange([...rows, ...newRowsToAdd]);
     };
 
     // Delete both main and sub row together

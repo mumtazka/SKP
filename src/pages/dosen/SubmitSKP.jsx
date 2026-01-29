@@ -127,9 +127,36 @@ const SubmitSKP = () => {
     const historyInitialized = useRef(false);
     const saveTimeoutRef = useRef(null);
 
+    // Migration Helper
+    const migrateRows = (rows) => {
+        if (!rows || rows.length === 0) return [];
+        // Check if migration is needed (if any row is missing isSubRow property)
+        const needsMigration = rows.some(r => r.isSubRow === undefined);
+        if (!needsMigration) return rows;
+
+        return rows.map((row, index) => {
+            const isEven = index % 2 === 0;
+            if (isEven) {
+                return { ...row, isSubRow: false, parentId: undefined };
+            } else {
+                // Link to the previous row (which is a main row)
+                const parentId = rows[index - 1]?.id;
+                return { ...row, isSubRow: true, parentId: parentId };
+            }
+        });
+    };
+
     // Derived state for rendering: Use history if available, otherwise draft or initial
-    // We strictly use historyState as the source of truth for the UI once initialized
-    const data = historyState || draftData;
+    // Apply migration to ensure legacy data fits new structure
+    const rawData = historyState || draftData;
+    const data = React.useMemo(() => {
+        if (!rawData) return rawData;
+        return {
+            ...rawData,
+            utama: migrateRows(rawData.utama),
+            tambahan: migrateRows(rawData.tambahan)
+        };
+    }, [rawData]);
 
     // Explicit Action Handler: Updates history AND drafts
     // This is the ONLY way data should be updated during editing
@@ -215,8 +242,14 @@ const SubmitSKP = () => {
                     if (currentYearSkpEntry.status === 'Approved') {
                         setIsReadOnly(true);
                         if (currentYearSkpEntry.details) {
-                            setDraftData(currentYearSkpEntry.details);
-                            resetHistory(currentYearSkpEntry.details);
+                            // Migrate loaded data
+                            const migratedDetails = {
+                                ...currentYearSkpEntry.details,
+                                utama: migrateRows(currentYearSkpEntry.details?.utama),
+                                tambahan: migrateRows(currentYearSkpEntry.details?.tambahan)
+                            };
+                            setDraftData(migratedDetails);
+                            resetHistory(migratedDetails);
                             historyInitialized.current = true;
                         }
                         toast.success("SKP tahun ini sudah disetujui. Anda hanya dapat melihat.");
@@ -224,16 +257,28 @@ const SubmitSKP = () => {
                         setIsReadOnly(false);
                         setFeedback(currentYearSkpEntry.feedback);
                         if (currentYearSkpEntry.details) {
-                            setDraftData(currentYearSkpEntry.details);
-                            resetHistory(currentYearSkpEntry.details);
+                            // Migrate loaded data
+                            const migratedDetails = {
+                                ...currentYearSkpEntry.details,
+                                utama: migrateRows(currentYearSkpEntry.details?.utama),
+                                tambahan: migrateRows(currentYearSkpEntry.details?.tambahan)
+                            };
+                            setDraftData(migratedDetails);
+                            resetHistory(migratedDetails);
                             historyInitialized.current = true;
                         }
                         toast.warning("SKP Anda dikembalikan untuk revisi. Silakan cek catatan.");
                     } else if (currentYearSkpEntry.status === 'Pending') {
                         setIsReadOnly(true);
                         if (currentYearSkpEntry.details) {
-                            setDraftData(currentYearSkpEntry.details);
-                            resetHistory(currentYearSkpEntry.details);
+                            // Migrate loaded data
+                            const migratedDetails = {
+                                ...currentYearSkpEntry.details,
+                                utama: migrateRows(currentYearSkpEntry.details?.utama),
+                                tambahan: migrateRows(currentYearSkpEntry.details?.tambahan)
+                            };
+                            setDraftData(migratedDetails);
+                            resetHistory(migratedDetails);
                             historyInitialized.current = true;
                         }
                         toast.info("SKP sedang dalam proses review. Tidak dapat diedit.");

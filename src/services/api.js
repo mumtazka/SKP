@@ -275,6 +275,7 @@ export const api = {
             if (updates.photo !== undefined) updateData.photo = updates.photo;
             if (updates.jabatan !== undefined) updateData.jabatan = updates.jabatan;
             if (updates.pangkat !== undefined) updateData.pangkat = updates.pangkat;
+            if (updates.identityNumber !== undefined) updateData.identity_number = updates.identityNumber;
 
             const { data, error } = await supabase
                 .from('users')

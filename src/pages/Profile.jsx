@@ -36,7 +36,8 @@ const Profile = () => {
         photo: '',
         email: '',
         phoneNumber: '',
-        address: ''
+        address: '',
+        identityNumber: ''
     });
 
     // Password Form State
@@ -80,7 +81,8 @@ const Profile = () => {
                 phoneNumber: data.phoneNumber || '',
                 address: data.address || '',
                 pangkat: data.pangkat || '',
-                jabatan: data.jabatan || ''
+                jabatan: data.jabatan || '',
+                identityNumber: data.identityNumber || ''
             });
         } catch (error) {
             console.error('Failed to load profile:', error);
@@ -92,7 +94,8 @@ const Profile = () => {
                 phoneNumber: user.phoneNumber || '',
                 address: user.address || '',
                 pangkat: user.pangkat || '',
-                jabatan: user.jabatan || ''
+                jabatan: user.jabatan || '',
+                identityNumber: user.identityNumber || ''
             });
         } finally {
             setLoading(false);
@@ -340,7 +343,12 @@ const Profile = () => {
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-500">Identity Number (NIP/NIK)</p>
-                                    <p className="font-medium text-gray-900">{data.identityNumber || '-'}</p>
+                                    <Input
+                                        value={editForm.identityNumber}
+                                        onChange={(e) => setEditForm({ ...editForm, identityNumber: e.target.value })}
+                                        placeholder="Enter NIP"
+                                        className="mt-1"
+                                    />
                                 </div>
                             </div>
 

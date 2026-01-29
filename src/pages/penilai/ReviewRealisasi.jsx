@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 import { Button } from '@/components/common/Button';
 import { toast } from 'sonner';
+import { debounce } from 'lodash';
 import {
     ArrowLeft,
     CheckCircle,
@@ -27,7 +28,6 @@ import {
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import SKPSection from '../dosen/components/SKPSection';
-import { useSkpDraft } from '@/hooks/useSkpDraft';
 import Toolbar from '@/pages/dosen/components/Toolbar';
 
 const RATING_OPTIONS = [
@@ -90,11 +90,35 @@ const ReviewRealisasi = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Draft Logic for Perilaku Kerja - Scoped by SKP ID
-    const {
-        data: perilakuRows,
-        setData: setPerilakuRows,
-        clearDraft
-    } = useSkpDraft(INITIAL_PERILAKU, id); // Pass id as unique key
+    const [perilakuRows, setPerilakuRows] = useState(INITIAL_PERILAKU);
+    const [savingStatus, setSavingStatus] = useState('idle'); // 'idle', 'saving', 'saved', 'error'
+
+    // DB Auto-save logic
+    const savePerilakuToDb = useCallback(
+        debounce(async (rows, skpId, currentRealisasi) => {
+            if (!skpId) return;
+            try {
+                // Save Perilaku data INSIDE realisasi JSON bucket
+                const updatedRealisasi = { ...currentRealisasi, perilaku: rows };
+                await api.skps.update(skpId, {
+                    realisasi: updatedRealisasi
+                });
+                setSavingStatus('saved');
+                setTimeout(() => setSavingStatus('idle'), 2000);
+            } catch (error) {
+                console.error("Auto-save failed:", error);
+                setSavingStatus('error');
+            }
+        }, 1000),
+        []
+    );
+
+    const handlePerilakuChange = (newRows) => {
+        setPerilakuRows(newRows);
+        setSavingStatus('saving');
+        // Pass current skp.realisasi (or empty object if null) to properly merge
+        savePerilakuToDb(newRows, id, skp?.realisasi || {});
+    };
 
     const [activeEditor, setActiveEditor] = useState(null);
     const [activeSection, setActiveSection] = useState(null); // Track active section for Toolbar context
@@ -156,19 +180,12 @@ const ReviewRealisasi = () => {
             // Actually, `useSkpDraft` initializes `data` state inside.
             // We should just check if we need to hydrate from DB.
 
-            if (data.perilaku && Array.isArray(data.perilaku) && data.perilaku.length > 0) {
-                // Check if current draft is just the default placeholder
-                const isDefault = JSON.stringify(perilakuRows) === JSON.stringify(INITIAL_PERILAKU);
-                // Also checking if the hook has already loaded saved data is tricky synchronously here.
-                // But since `perilakuRows` comes from the hook which ran its effect, it might be stale or updated.
-                // Let's update it if DB has data. But this might overwrite local draft if we aren't careful.
-
-                // SAFE APPROACH: If `perilakuRows` is exactly the Initial Default, AND DB has data, use DB data.
-                // Otherwise assume local draft is what the user wants (either empty or work in progress).
-
-                if (isDefault) {
-                    setPerilakuRows(data.perilaku);
-                }
+            // Load Perilaku from Realisasi JSON bucket
+            const savedPerilaku = data.realisasi?.perilaku;
+            if (savedPerilaku && Array.isArray(savedPerilaku) && savedPerilaku.length > 0) {
+                setPerilakuRows(savedPerilaku);
+            } else {
+                setPerilakuRows(INITIAL_PERILAKU);
             }
 
         } catch (error) {
@@ -216,15 +233,18 @@ const ReviewRealisasi = () => {
                 }
             });
 
+            // Ensure perilaku is saved inside realisasi
+            updatedRealisasi.perilaku = perilakuRows;
+
             await api.skps.update(skp.id, {
                 realisasi: updatedRealisasi,
-                perilaku: perilakuRows, // Save dynamic rows
+                // perilaku: perilakuRows, // Removed direct mapping
                 realisasiStatus: 'Reviewed',
                 realisasiReviewedAt: new Date().toISOString(),
                 realisasiReviewerId: user.id
             });
 
-            clearDraft(); // Clear draft after successful save
+
 
             toast.success('Review berhasil dikirim!');
             navigate(returnTo);
@@ -256,9 +276,12 @@ const ReviewRealisasi = () => {
                 }
             });
 
+            // Ensure perilaku is saved inside realisasi
+            updatedRealisasi.perilaku = perilakuRows;
+
             await api.skps.update(skp.id, {
                 realisasi: updatedRealisasi,
-                perilaku: perilakuRows, // Save dynamic rows
+                // perilaku: perilakuRows, // Removed direct mapping
                 predikatAkhir: finalRating,
                 realisasiStatus: 'Approved',
                 realisasiReviewedAt: new Date().toISOString(),
@@ -267,7 +290,7 @@ const ReviewRealisasi = () => {
                 evaluatorId: user.id
             });
 
-            clearDraft(); // Clear draft after finalization
+
 
             toast.success('SKP berhasil difinalisasi!');
             setShowFinalDialog(false);
@@ -952,10 +975,21 @@ const ReviewRealisasi = () => {
                     </div>
                 </div>
 
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-primary text-sm uppercase tracking-wide flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        Perilaku Kerja
+                    </h3>
+                    <div className="text-xs font-medium text-gray-500">
+                        {savingStatus === 'saving' && <span className="text-blue-600 animate-pulse">Menyimpan...</span>}
+                        {savingStatus === 'saved' && <span className="text-green-600 flex items-center gap-1"><CheckCircle size={12} /> Tersimpan</span>}
+                        {savingStatus === 'error' && <span className="text-red-500">Gagal menyimpan</span>}
+                    </div>
+                </div>
                 <SKPSection
-                    title="Perilaku Kerja"
+                    title="" // Empty title because we rendered custom header above
                     rows={perilakuRows}
-                    onChange={(newRows) => setPerilakuRows(newRows)}
+                    onChange={handlePerilakuChange}
                     onEditorFocus={setActiveEditor}
                     readOnly={!canEditPerilaku}
                     showNumbers={true}

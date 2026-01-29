@@ -84,11 +84,7 @@ const Toolbar = ({ editor, selectedEditors = [] }) => {
                 icon={ListOrdered}
             />
 
-            {!hasActiveEditor && (
-                <div className="ml-auto text-xs text-gray-400 font-medium px-2">
-                    Select a field or cells to edit formatting
-                </div>
-            )}
+
 
             {selectedEditors.length > 1 && (
                 <div className="ml-auto flex items-center gap-2">

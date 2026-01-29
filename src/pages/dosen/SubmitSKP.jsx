@@ -491,6 +491,81 @@ const SubmitSKP = () => {
                 }}
             />
 
+            {/* SECTION 3: LAMPIRAN */}
+            <SectionHeader title="C. LAMPIRAN SASARAN KINERJA PEGAWAI" />
+
+            {/* C.1 Dukungan Sumber Daya */}
+            <div className="mb-4">
+                <h4 className="font-bold text-gray-700 mb-2 px-1">1. Dukungan Sumber Daya</h4>
+                <SKPSection
+                    title=""
+                    rows={data.dukungan}
+                    onChange={(newRows, isTextUpdate) => updateSectionWithType('dukungan', newRows, isTextUpdate)}
+                    onEditorFocus={setActiveEditor}
+                    feedback={feedback?.sections?.dukungan}
+                    readOnly={isReadOnly}
+                    isActiveSection={activeSection === 'dukungan'}
+                    onSectionActive={() => setActiveSection('dukungan')}
+                    onSelectionChange={(editors, range) => {
+                        if (activeSection === 'dukungan') {
+                            setSelectedEditors(editors);
+                            setSelectionRange(range);
+                        }
+                    }}
+                    columnHeaders={['Dukungan Sumber Daya']}
+                    showNumbers={true}
+                    simpleRow={true}
+                />
+            </div>
+
+            {/* C.2 Skema Pertanggungjawaban */}
+            <div className="mb-4">
+                <h4 className="font-bold text-gray-700 mb-2 px-1">2. Skema Pertanggungjawaban</h4>
+                <SKPSection
+                    title=""
+                    rows={data.skema}
+                    onChange={(newRows, isTextUpdate) => updateSectionWithType('skema', newRows, isTextUpdate)}
+                    onEditorFocus={setActiveEditor}
+                    feedback={feedback?.sections?.skema}
+                    readOnly={isReadOnly}
+                    isActiveSection={activeSection === 'skema'}
+                    onSectionActive={() => setActiveSection('skema')}
+                    onSelectionChange={(editors, range) => {
+                        if (activeSection === 'skema') {
+                            setSelectedEditors(editors);
+                            setSelectionRange(range);
+                        }
+                    }}
+                    columnHeaders={['Skema Pertanggungjawaban']}
+                    showNumbers={true}
+                    simpleRow={true}
+                />
+            </div>
+
+            {/* C.3 Konsekuensi */}
+            <div className="mb-4">
+                <h4 className="font-bold text-gray-700 mb-2 px-1">3. Konsekuensi</h4>
+                <SKPSection
+                    title=""
+                    rows={data.konsekuensi}
+                    onChange={(newRows, isTextUpdate) => updateSectionWithType('konsekuensi', newRows, isTextUpdate)}
+                    onEditorFocus={setActiveEditor}
+                    feedback={feedback?.sections?.konsekuensi}
+                    readOnly={isReadOnly}
+                    isActiveSection={activeSection === 'konsekuensi'}
+                    onSectionActive={() => setActiveSection('konsekuensi')}
+                    onSelectionChange={(editors, range) => {
+                        if (activeSection === 'konsekuensi') {
+                            setSelectedEditors(editors);
+                            setSelectionRange(range);
+                        }
+                    }}
+                    columnHeaders={['Konsekuensi']}
+                    showNumbers={true}
+                    simpleRow={true}
+                />
+            </div>
+
 
 
             {/* Submit Button */}

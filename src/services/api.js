@@ -55,6 +55,7 @@ const transformSkp = (skp) => {
         details: skp.details,
         feedback: skp.feedback,
         realisasi: skp.realisasi,
+        perilaku: skp.perilaku, // Added perilaku field
         realisasiStatus: skp.realisasi_status,
         realisasiSubmittedAt: skp.realisasi_submitted_at,
         realisasiReviewedAt: skp.realisasi_reviewed_at,

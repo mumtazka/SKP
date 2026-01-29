@@ -37,7 +37,8 @@ const EditorCell = ({
     // width prop is handled by colgroup usually, but we can override if needed
     colSpan = 1,
     rowSpan = 1, // NEW: rowSpan support
-    isHidden = false // Support for cells hidden by merge
+    isHidden = false, // Support for cells hidden by merge
+    autoList = false // NEW: Auto-bullet list mode
 }) => {
     // If hidden (covered by another merged cell), don't render td
     if (isHidden) return null;
@@ -66,6 +67,9 @@ const EditorCell = ({
             }
         },
         onFocus: ({ editor }) => {
+            if (autoList && !editor.isActive('bulletList')) {
+                editor.commands.toggleBulletList();
+            }
             if (!readOnly && onFocusRef.current) {
                 onFocusRef.current(editor);
             }
@@ -122,7 +126,7 @@ const EditorCell = ({
             <div className="h-full w-full relative">
                 <EditorContent
                     editor={editor}
-                    className={`prose prose-sm prose-purple max-w-none p-2.5 min-h-[45px] outline-none text-sm w-full h-full ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
+                    className={`prose prose-sm prose-purple max-w-none p-2.5 min-h-[45px] outline-none text-sm w-full h-full [&_p]:!my-0 [&_li]:!my-0 [&_ul]:!my-0 [&_ol]:!my-0 ${readOnly ? 'cursor-default select-none bg-gray-50/50' : ''}`}
                     style={{ lineHeight: '1.4' }}
                 />
             </div>
@@ -247,6 +251,7 @@ const RowItem = ({
                     onMouseDown={onCellMouseDown}
                     onMouseEnter={onCellMouseEnter}
                     isSelected={isCellSelected(rowIndex, colIndex)}
+                    autoList={isSubRow}
                 />
             ))}
 

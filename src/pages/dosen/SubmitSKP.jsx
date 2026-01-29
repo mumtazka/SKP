@@ -480,6 +480,30 @@ const SubmitSKP = () => {
             <div className="mb-6 flex justify-between items-end">
             </div>
 
+            {/* Profile Completion Guide */}
+            {
+                (!effectiveUser.identityNumber || !effectiveUser.pangkat || !effectiveUser.jabatan) && (
+                    <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-6 flex gap-4 animate-in slide-in-from-top-4 shadow-sm">
+                        <div className="bg-amber-100 p-2 rounded-full h-fit shrink-0">
+                            <Info className="text-amber-600" size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-amber-900 text-lg">Lengkapi Profil Anda</h3>
+                            <p className="text-amber-800 mt-1 leading-relaxed">
+                                Sebelum membuat SKP, mohon lengkapi data profil Anda terlebih dahulu (NIP, Pangkat/Golongan, Jabatan).
+                            </p>
+                            <Button
+                                variant="outline"
+                                className="mt-4 border-amber-300 text-amber-800 hover:bg-amber-100"
+                                onClick={() => navigate('/dashboard')} // Assuming profile edit is accessible from dashboard or there is a profile link. If dynamic sidebar, better to link to profile page if exists. But for Dosen usually it is in header or dashboard.
+                            >
+                                Ke Profil Saya
+                            </Button>
+                        </div>
+                    </div>
+                )
+            }
+
             {/* Top Info Card */}
             <SKPHeader employee={effectiveUser} evaluator={evaluator} />
 

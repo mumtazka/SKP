@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { User, Lock, Eye, EyeOff, CheckCircle, Mail } from 'lucide-react';
+import { Logo } from '@/components/common/Logo';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -125,17 +126,8 @@ const Login = () => {
         <div className="min-h-screen w-full flex bg-white overflow-hidden">
             {/* Left Side - Form */}
             <div className="w-full lg:w-[45%] flex flex-col justify-center px-8 sm:px-12 lg:px-20 xl:px-24 relative z-10 bg-white">
-                <div className="absolute top-10 left-10 flex items-center gap-2.5">
-                    <motion.div
-                        className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                            <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z" />
-                        </svg>
-                    </motion.div>
-                    <span className="font-bold text-lg text-gray-800 tracking-tight">System logo</span>
+                <div className="absolute top-8 left-8 sm:top-10 sm:left-10">
+                    <Logo size={48} />
                 </div>
 
                 <div className="mb-8 mt-16 lg:mt-0 overflow-hidden">

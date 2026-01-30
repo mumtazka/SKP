@@ -16,8 +16,13 @@ import {
     Calendar,
     ChevronDown,
     UserCircle,
-    Briefcase
+    ChevronDown,
+    UserCircle,
+    ChevronDown,
+    UserCircle,
+    Briefcase,
 } from 'lucide-react';
+import { Logo } from '@/components/common/Logo';
 
 const SidebarItem = ({ item, isOpen, isMobile }) => {
     const location = useLocation();
@@ -206,9 +211,8 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         >
             {/* Header */}
             <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100">
-                <div className={cn("flex items-center gap-2 overflow-hidden", !isOpen && "justify-center w-full")}>
-                    <div className="h-8 w-8 min-w-[2rem] rounded-lg bg-primary flex items-center justify-center text-white font-bold shrink-0">S</div>
-                    {isOpen && <span className="font-bold text-lg tracking-tight truncate">SKP System</span>}
+                <div className={cn("flex items-center gap-3 overflow-hidden", !isOpen && "justify-center w-full")}>
+                    <Logo showText={isOpen} size={isOpen ? 40 : 32} />
                 </div>
                 {!isMobile && (
                     <button

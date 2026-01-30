@@ -15,6 +15,7 @@ import {
     Building2,
     Send,
     FileText,
+    TrendingUp,
     Printer,
     Download,
     Lock,
@@ -29,6 +30,7 @@ import {
 import html2pdf from 'html2pdf.js';
 import SKPSection from '../dosen/components/SKPSection';
 import Toolbar from '@/pages/dosen/components/Toolbar';
+import DynamicDistributionChart from './components/DynamicDistributionChart';
 
 const RATING_OPTIONS = [
     {
@@ -89,6 +91,9 @@ const ReviewRealisasi = () => {
     const [feedback, setFeedback] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // State to store the REAL official evaluator from user master data
+    const [officialEvaluator, setOfficialEvaluator] = useState(null);
+
     // Draft Logic for Perilaku Kerja - Scoped by SKP ID
     const [perilakuRows, setPerilakuRows] = useState(INITIAL_PERILAKU);
     const [savingStatus, setSavingStatus] = useState('idle'); // 'idle', 'saving', 'saved', 'error'
@@ -145,6 +150,27 @@ const ReviewRealisasi = () => {
             const data = await api.skps.getById(id);
             setSkp(data);
 
+            // Fetch Official Evaluator from User Master Data
+            if (data.userId) {
+                try {
+                    const userDetail = await api.users.getById(data.userId);
+
+                    // Logic: ID Penilai tersimpan di dalam object `raters`
+                    const raterId = userDetail.raters?.pejabatPenilaiId;
+
+                    if (raterId) {
+                        const raterDetail = await api.users.getById(raterId);
+                        setOfficialEvaluator(raterDetail);
+                    } else {
+                        // Fallback mechanism if structure differs
+                        const realEvaluator = userDetail.evaluator || userDetail.penilai || userDetail.pejabatPenilai || null;
+                        setOfficialEvaluator(realEvaluator);
+                    }
+                } catch (err) {
+                    console.warn("Could not fetch official evaluator for user:", err);
+                }
+            }
+
             // Initialize feedback logic...
             const existingFeedback = {};
             if (data.realisasi) {
@@ -160,25 +186,6 @@ const ReviewRealisasi = () => {
                 });
             }
             setFeedback(existingFeedback);
-
-            // Initialize Perilaku Data:
-            // Only overwrite draft if draft is in default initial state? 
-            // Better strategy: If the DB has saved Perilaku data, we should trust it, UNLESS the user has a local draft that is newer?
-            // Since we can't easily know which is newer without timestamps, we'll favor the Draft if it exists and is different from Initial.
-            // But simple approach: If DB has data, load it into the draft state (updating local storage too).
-
-            // However, the requirement is "Buat storage sementara (draft)".
-            // If the user navigates away and comes back, they want their typed text.
-            // If they reload, useSkpDraft already loaded from localStorage.
-
-            // So, IF we have DB data, we should set it ONLY IF the draft is "empty" or "default".
-            // Or maybe just populate if we haven't touched it yet.
-            // Let's assume if localStorage has data (loaded by hook), we keep it.
-            // But how do we know if the hook loaded meaningful data?
-
-            // We can check if `perilakuRows` matches `INITIAL_PERILAKU` (deep check).
-            // Actually, `useSkpDraft` initializes `data` state inside.
-            // We should just check if we need to hydrate from DB.
 
             // Load Perilaku from Realisasi JSON bucket
             const savedPerilaku = data.realisasi?.perilaku;
@@ -305,20 +312,30 @@ const ReviewRealisasi = () => {
     };
 
 
-
     const handleDownloadPDF = () => {
         if (!skp) return;
 
-        // Evaluator Data
-        // Evaluator Data
-        const evaluatorSource = skp.evaluator?.fullName ? skp.evaluator : (isReviewer ? user : {});
-        const evaluatorName = evaluatorSource.fullName || "_______________________";
-        const evaluatorNIP = evaluatorSource.identityNumber || "...................";
-        const evaluatorJabatan = evaluatorSource.jabatan || "Pejabat Penilai Kinerja";
-        const evaluatorPangkat = evaluatorSource.pangkat || "-";
-        const evaluatorUnit = evaluatorSource.departmentName || "-";
+        // 1. Logic Evaluator Data (Fix)
+        // Prioritaskan data yang tersimpan di SKP (snapshot/relation) daripada current user
+        let evaluatorSource = {};
 
-        // Helper to strip HTML tags
+        if (officialEvaluator && (officialEvaluator.fullName || officialEvaluator.nama)) {
+            evaluatorSource = officialEvaluator;
+        } else if (skp.pejabatPenilai && skp.pejabatPenilai.fullName) {
+            evaluatorSource = skp.pejabatPenilai;
+        } else if (skp.evaluator && skp.evaluator.fullName) {
+            evaluatorSource = skp.evaluator;
+        } else if (isReviewer) {
+            evaluatorSource = user;
+        }
+
+        const evaluatorName = evaluatorSource.fullName || (skp.pejabatPenilai?.nama || "_______________________");
+        const evaluatorNIP = evaluatorSource.identityNumber || (skp.pejabatPenilai?.nip || "...................");
+        const evaluatorJabatan = evaluatorSource.jabatan || (skp.pejabatPenilai?.jabatan || "Pejabat Penilai Kinerja");
+        const evaluatorPangkat = evaluatorSource.pangkat || "-";
+        const evaluatorUnit = evaluatorSource.departmentName || (skp.pejabatPenilai?.unitKerja || "-");
+
+        // Helper strip HTML
         const stripHtml = (html) => {
             if (!html) return '-';
             const tmp = document.createElement("DIV");
@@ -326,13 +343,102 @@ const ReviewRealisasi = () => {
             return tmp.textContent || tmp.innerText || '-';
         };
 
-        // Helper to render rows for hasil kerja tables
+        // 2. Determine Distribution Template (Based on Dominant Rating)
+        const counts = {
+            'Sangat Kurang': 0,
+            'Kurang/Misconduct': 0,
+            'Butuh Perbaikan': 0,
+            'Baik': 0,
+            'Sangat Baik': 0
+        };
+
+        const allItems = [
+            ...(skp.realisasi?.utama || []),
+            ...(skp.realisasi?.tambahan || [])
+        ];
+
+        allItems.forEach(item => {
+            if (!item || !item.rating) return;
+            const r = item.rating.toLowerCase();
+            if (r.includes('sangat buruk') || r.includes('sangat kurang')) counts['Sangat Kurang']++;
+            else if (r.includes('buruk') || r.includes('kurang') || r.includes('misconduct')) counts['Kurang/Misconduct']++;
+            else if (r.includes('cukup') || r.includes('butuh perbaikan')) counts['Butuh Perbaikan']++;
+            else if (r.includes('sangat baik')) counts['Sangat Baik']++;
+            else if (r.includes('baik')) counts['Baik']++;
+        });
+
+        // Helper to format NIP to avoid "NIP. NIP. ..."
+        const formatNIP = (nip) => {
+            if (!nip) return '-';
+            return nip.toString().replace(/^(NIP\.?|NIP|nip\.?|nip)\s*/i, '').trim();
+        };
+
+        const signatureDate = skp.approvedAt
+            ? new Date(skp.approvedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+            : (skp.realisasiReviewedAt
+                ? new Date(skp.realisasiReviewedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }));
+
+        let dominantCategory = 'Baik';
+        let maxCount = -1;
+        Object.entries(counts).forEach(([cat, count]) => {
+            if (count > maxCount) {
+                maxCount = count;
+                dominantCategory = cat;
+            }
+        });
+
+        // Path Templates (Adjusted for PDF SVG Width 500, Height 120, Baseline 100)
+        const templates = {
+            'Sangat Baik': {
+                // J-Curve Strict
+                path: "M50,100 C350,100 420,80 450,10",
+                fill: "M50,100 C350,100 420,80 450,10 L450,100 L50,100 Z"
+            },
+            'Baik': {
+                // Skewed Right Bell
+                path: "M50,100 C250,100 300,20 350,20 C400,20 450,80 450,80",
+                fill: "M50,100 C250,100 300,20 350,20 C400,20 450,80 450,80 L450,100 L50,100 Z"
+            },
+            'Butuh Perbaikan': {
+                // Normal Bell
+                path: "M50,100 C80,100 150,20 250,20 C350,20 420,100 450,100",
+                fill: "M50,100 C80,100 150,20 250,20 C350,20 420,100 450,100 L450,100 L50,100 Z"
+            },
+            'Kurang/Misconduct': {
+                // Skewed Left Bell
+                path: "M50,80 C50,80 100,20 150,20 C200,20 250,100 450,100",
+                fill: "M50,80 C50,80 100,20 150,20 C200,20 250,100 450,100 L450,100 L50,100 Z"
+            },
+            'Sangat Kurang': {
+                // Convex Exponential Decay
+                path: "M50,10 C80,80 180,100 450,100",
+                fill: "M50,10 C80,80 180,100 450,100 L450,100 L50,100 Z"
+            }
+        };
+
+        const template = templates[dominantCategory] || templates['Baik'];
+
+        const pathD = template.path;
+        const fillPathD = template.fill;
+        const points = [
+            { x: 50, val: counts['Sangat Kurang'] },
+            { x: 150, val: counts['Kurang/Misconduct'] },
+            { x: 250, val: counts['Butuh Perbaikan'] },
+            { x: 350, val: counts['Baik'] },
+            { x: 450, val: counts['Sangat Baik'] }
+        ];
+
+        const svgWidth = 500;
+        const svgHeight = 120;
+        const graphBottomY = 100;
+
+        // Render Hasil Kerja Rows
         const renderHasilKerjaRows = (planRows, realisasiRows, feedbackData) => {
             if (!planRows || planRows.length === 0) {
-                return '<tr><td colspan="5" style="text-align: center; padding: 12px; font-style: italic; color: #666;">Tidak ada data</td></tr>';
+                return '<tr><td colspan="4" style="text-align: center; padding: 12px;">Tidak ada data</td></tr>';
             }
 
-            // Group rows by main row (same logic as renderSection)
             const groups = [];
             let mainRowCounter = 0;
             let currentGroup = null;
@@ -353,180 +459,217 @@ const ReviewRealisasi = () => {
             });
 
             return groups.map((group) => {
-                // Combine all plan content for this group
-                const planContent = group.rows.map(row => {
-                    const content = row.columns?.[0] || '';
-                    return stripHtml(content);
-                }).join('\n• ');
+                let planContentHTML = '';
+                const mainRow = group.rows[0];
+                const mainText = stripHtml(mainRow.columns?.[0] || '');
+                planContentHTML += `<div style="margin-bottom: 8px;">1. ${mainText}</div>`;
 
-                const realisasiContent = stripHtml(realisasiRows?.[group.startIndex]?.realisasi || '-');
-                const umpanBalik = feedbackData?.[group.startIndex]?.umpanBalik || '-';
-                const rating = feedbackData?.[group.startIndex]?.rating || '-';
+                if (group.rows.length > 1) {
+                    planContentHTML += `<div style="margin-bottom: 4px;">Ukuran keberhasilan / Indikator Kinerja Individu, dan Target:</div>`;
+                    planContentHTML += `<ul style="margin: 0; padding-left: 20px; list-style-type: disc;">`;
+                    for (let i = 1; i < group.rows.length; i++) {
+                        const subRow = group.rows[i];
+                        const subText = stripHtml(subRow.columns?.[0] || '');
+                        planContentHTML += `<li>${subText}</li>`;
+                    }
+                    planContentHTML += `</ul>`;
+                }
+
+                const realisasiText = realisasiRows?.[group.startIndex]?.realisasi || '-';
+                // Try to detect if realisasi is HTML or plain text
+                const formattedRealisasi = realisasiText;
+
+                const umpanBalikText = feedbackData?.[group.startIndex]?.umpanBalik || '-';
 
                 return `
                     <tr>
-                        <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top; width: 40px;">${group.number}</td>
-                        <td style="border: 1px solid #000; padding: 8px; vertical-align: top; width: 30%;">${planContent}</td>
-                        <td style="border: 1px solid #000; padding: 8px; vertical-align: top; width: 25%;">${realisasiContent}</td>
-                        <td style="border: 1px solid #000; padding: 8px; vertical-align: top; width: 25%;">${umpanBalik}</td>
-                        <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top; width: 15%;">${rating}</td>
+                        <td style="border: 1px solid #000; padding: 5px; text-align: center; vertical-align: top; width: 30px;">${group.number}</td>
+                        <td style="border: 1px solid #000; padding: 5px; vertical-align: top;">${planContentHTML}</td>
+                        <td style="border: 1px solid #000; padding: 5px; vertical-align: top;">${formattedRealisasi}</td>
+                        <td style="border: 1px solid #000; padding: 5px; vertical-align: top;">${umpanBalikText}</td>
                     </tr>
                 `;
             }).join('');
         };
 
-        // Helper to render Perilaku Kerja rows
         const renderPerilakuRows = (rows) => {
-            if (!rows || rows.length === 0) {
-                return '<tr><td colspan="3" style="text-align: center; padding: 12px; font-style: italic; color: #666;">Tidak ada data perilaku kerja</td></tr>';
-            }
-
-            // We need to group rows to calculate rowspans for the number column if we want it strictly per group, 
-            // but the editor structure already defines main/sub rows.
-            // HTML table structure:
-            // Col 1: No (Main Row only)
-            // Col 2: Perilaku Kerja (Main) / Indikator (Sub)
-            // Col 3: Ekspektasi (Merged across Main+Sub)
-
+            if (!rows || rows.length === 0) return '<tr><td colspan="3" style="text-align: center;">Tidak ada data</td></tr>';
             let html = '';
             let mainRowNumber = 0;
-
-            // We iterate normally. If it's a sub-row, we handle it. 
-            // However, the Editor "Main Row" has rowspan=2 for Ekspektasi.
-            // But in the editor, we might have multiple sub-rows or variable structure if user edited it.
-            // Let's rely on the 'isSubRow' flag.
-
-            // For PDF, simple approach: 
-            // Main Row: Shows Number, Perilaku Text, Starts Ekspektasi (rowspan derived from group size?)
-            // The editor state `rowSpans` might be accurate, let's try to trust the editor's structure if possible, 
-            // or just render straight:
-
-            rows.forEach((row, index) => {
+            rows.forEach((row) => {
                 const isMain = !row.isSubRow;
-                const col0 = stripHtml(row.columns?.[0] || ''); // Perilaku/Indikator
-                const col1 = stripHtml(row.columns?.[1] || ''); // Ekspektasi
-
+                const col0 = stripHtml(row.columns?.[0] || '');
+                const col1 = stripHtml(row.columns?.[1] || '');
                 if (isMain) {
                     mainRowNumber++;
                     const rowSpan = row.rowSpans?.[1] || 1;
-                    // Note: row.rowSpans[1] is for the 2nd column in Editor (Ekspektasi)
-
-                    html += `
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top; width: 40px;">${mainRowNumber}</td>
-                            <td style="border: 1px solid #000; padding: 8px; vertical-align: top; font-weight: bold;">${col0}</td>
-                            <td rowspan="${rowSpan}" style="border: 1px solid #000; padding: 8px; vertical-align: top;">${col1}</td>
-                        </tr>
-                    `;
+                    html += `<tr>
+                        <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top; width: 40px;">${mainRowNumber}</td>
+                        <td style="border: 1px solid #000; padding: 8px; vertical-align: top; font-weight: bold;">${col0}</td>
+                        <td rowspan="${rowSpan}" style="border: 1px solid #000; padding: 8px; vertical-align: top;">${col1}</td>
+                    </tr>`;
                 } else {
-                    // Sub Row
-                    // We assume the Ekspektasi column is handled by the parent's rowspan, so we skip it (display: none concept in PDF?? No, just don't render the td if covered)
-                    // But in HTML table, if previous row had rowspan, we just omit the cell here.
-                    // The editor puts `colHiddens` on this row.
-
                     const isCol1Hidden = row.colHiddens?.includes(1);
-
-                    html += `
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 8px; text-align: center; vertical-align: top;"></td>
-                            <td style="border: 1px solid #000; padding: 8px; vertical-align: top; padding-left: 20px;">- ${col0}</td>
-                            ${!isCol1Hidden ? `<td style="border: 1px solid #000; padding: 8px; vertical-align: top;">${col1}</td>` : ''}
-                        </tr>
-                    `;
+                    html += `<tr>
+                        <td style="border: 1px solid #000; padding: 8px;"></td>
+                        <td style="border: 1px solid #000; padding: 8px; vertical-align: top; padding-left: 20px;">- ${col0}</td>
+                        ${!isCol1Hidden ? `<td style="border: 1px solid #000; padding: 8px; vertical-align: top;">${col1}</td>` : ''}
+                    </tr>`;
                 }
             });
-
             return html;
         };
 
-        // Create HTML content
+        const currentYear = new Date().getFullYear();
+        const startPeriod = `01 Januari ${skp.year || currentYear}`;
+        const endPeriod = `31 Desember ${skp.year || currentYear}`;
+
         const element = document.createElement('div');
         element.innerHTML = `
-            <div style="font-family: 'Times New Roman', Times, serif; padding: 20px; color: #000; line-height: 1.4; font-size: 11pt;">
-                <!-- Header -->
-                <div style="text-align: center; margin-bottom: 25px;">
-                    <h2 style="font-size: 14pt; font-weight: bold; margin: 0;">SASARAN KINERJA PEGAWAI</h2>
-                    <h3 style="font-size: 12pt; font-weight: bold; margin: 5px 0;">PENDEKATAN HASIL KERJA KUALITATIF</h3>
-                    <h4 style="font-size: 11pt; font-weight: normal; margin: 5px 0;">BAGI PEJABAT ADMINISTRASI / FUNGSIONAL</h4>
-                    <p style="font-size: 11pt; margin: 10px 0;">Periode: ${skp.period || skp.year || '-'}</p>
+            <style>
+                @page { size: A4; margin: 10mm 15mm 10mm 15mm; }
+                body { font-family: 'Times New Roman', Times, serif; color: #000; line-height: 1.3; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 10px; page-break-inside: auto; }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+                td, th { border: 1px solid #000; padding: 6px 8px !important; vertical-align: top; word-wrap: break-word; }
+                .text-bold { font-weight: bold; }
+                .text-center { text-align: center; }
+                .signature-section { display: flex; justify-content: space-between; page-break-inside: avoid; margin-top: 30px; }
+                table.no-border td { border: none !important; padding: 1px !important; }
+            </style>
+            <div style="font-family: 'Times New Roman', Times, serif; color: #000; line-height: 1.3; font-size: 10pt;">
+                
+                <!-- HEADER -->
+                <div style="margin-bottom: 20px; position: relative;">
+                    <div style="position: absolute; left: 0; top: 0; font-size: 10pt;">
+                        Kementerian Pendidikan Tinggi, Sains dan Teknologi
+                    </div>
+                     <div style="text-align: right; font-size: 10pt;">
+                        Periode: ${startPeriod} s/d ${endPeriod}
+                    </div>
                 </div>
 
-                <!-- Employee Info Table -->
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 11pt;">
+                <div style="text-align: center; margin-bottom: 20px; clear: both;">
+                    <h2 style="font-size: 12pt; font-weight: bold; margin: 0;">EVALUASI KINERJA PEGAWAI</h2>
+                    <h3 style="font-size: 12pt; font-weight: bold; margin: 0;">PENDEKATAN HASIL KERJA KUALITATIF</h3>
+                    <h3 style="font-size: 12pt; font-weight: bold; margin: 0;">BAGI PEJABAT ADMINISTRASI / FUNGSIONAL</h3>
+                    <p style="font-size: 11pt; margin: 5px 0 0 0;">PERIODE: TRIWULAN I/II/III/IV-AKHIR*</p>
+                </div>
+
+                <!-- INFO TABLE -->
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px; border: 1px solid #000;">
                     <thead>
                         <tr>
-                            <th style="width: 50%; border: 1px solid #000; padding: 8px; text-align: left; background-color: #f0f0f0;">PEGAWAI YANG DINILAI</th>
-                            <th style="width: 50%; border: 1px solid #000; padding: 8px; text-align: left; background-color: #f0f0f0;">PEJABAT PENILAI KINERJA</th>
+                            <th style="width: 50%; border: 1px solid #000; padding: 4px; text-align: center;">Pegawai yang Dinilai</th>
+                            <th style="width: 50%; border: 1px solid #000; padding: 4px; text-align: center;">Pejabat Penilai Kinerja</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td style="border: 1px solid #000; padding: 10px; vertical-align: top;">
-                                <table style="width: 100%; border: none; font-size: 11pt;">
-                                    <tr><td style="width: 100px; padding: 2px 0;">1. Nama</td><td style="padding: 2px 0;">: ${skp.user?.fullName || '-'}</td></tr>
-                                    <tr><td style="padding: 2px 0;">2. NIP</td><td style="padding: 2px 0;">: ${skp.user?.identityNumber || '-'}</td></tr>
-                                    <tr><td style="padding: 2px 0;">3. Pangkat/Gol.</td><td style="padding: 2px 0;">: ${skp.user?.pangkat || '-'}</td></tr>
-                                    <tr><td style="padding: 2px 0;">4. Jabatan</td><td style="padding: 2px 0;">: ${skp.user?.jabatan || '-'}</td></tr>
-                                    <tr><td style="padding: 2px 0;">5. Unit Kerja</td><td style="padding: 2px 0;">: ${skp.user?.departmentName || '-'}</td></tr>
+                            <td style="border: 1px solid #000; padding: 5px; vertical-align: top;">
+                                <table class="no-border" style="width: 100%; border: none; font-size: 10pt;">
+                                    <tr><td style="width: 20px;">1.</td><td style="width: 90px;">Nama</td><td>: ${skp.user?.fullName || '-'}</td></tr>
+                                    <tr><td>2.</td><td>NIP</td><td>: ${formatNIP(skp.user?.identityNumber)}</td></tr>
+                                    <tr><td>3.</td><td>Pangkat / Gol.</td><td>: ${skp.user?.pangkat || '-'}</td></tr>
+                                    <tr><td>4.</td><td>Jabatan</td><td>: ${skp.user?.jabatan || '-'}</td></tr>
+                                    <tr><td>5.</td><td>Unit Kerja</td><td>: ${skp.user?.departmentName || '-'}</td></tr>
                                 </table>
                             </td>
-                            <td style="border: 1px solid #000; padding: 10px; vertical-align: top;">
-                                <table style="width: 100%; border: none; font-size: 11pt;">
-                                    <tr><td style="width: 100px; padding: 2px 0;">1. Nama</td><td style="padding: 2px 0;">: ${evaluatorName}</td></tr>
-                                    <tr><td style="padding: 2px 0;">2. NIP</td><td style="padding: 2px 0;">: ${evaluatorNIP}</td></tr>
-                                    <tr><td style="padding: 2px 0;">3. Pangkat/Gol.</td><td style="padding: 2px 0;">: ${evaluatorPangkat}</td></tr>
-                                    <tr><td style="padding: 2px 0;">4. Jabatan</td><td style="padding: 2px 0;">: ${evaluatorJabatan}</td></tr>
-                                    <tr><td style="padding: 2px 0;">5. Unit Kerja</td><td style="padding: 2px 0;">: ${evaluatorUnit}</td></tr>
+                            <td style="border: 1px solid #000; padding: 5px; vertical-align: top;">
+                                <table class="no-border" style="width: 100%; border: none; font-size: 10pt;">
+                                    <tr><td style="width: 20px;">1.</td><td style="width: 90px;">Nama</td><td>: ${evaluatorName}</td></tr>
+                                    <tr><td>2.</td><td>NIP</td><td>: ${formatNIP(evaluatorNIP)}</td></tr>
+                                    <tr><td>3.</td><td>Pangkat / Gol.</td><td>: ${evaluatorPangkat}</td></tr>
+                                    <tr><td>4.</td><td>Jabatan</td><td>: ${evaluatorJabatan}</td></tr>
+                                    <tr><td>5.</td><td>Unit Kerja</td><td>: ${evaluatorUnit}</td></tr>
                                 </table>
                             </td>
                         </tr>
                     </tbody>
                 </table>
 
-                <!-- Hasil Kerja Section -->
-                <div style="margin-bottom: 20px;">
-                    <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px;">HASIL KERJA</h3>
+                <!-- CAPAIAN ORG -->
+                <div style="border: 1px solid #000; border-top: none; padding: 5px 10px; margin-bottom: 0;">
+                    <span style="font-weight: bold;">CAPAIAN KINERJA ORGANISASI:</span> ${skp.predikatAkhir || 'BAIK'}
+                </div>
+
+                <!-- DYNAMIC CHART SVG -->
+                <div style="border: 1px solid #000; border-top: none; padding: 10px; margin-bottom: 20px; height: 180px; position: relative;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">POLA DISTRIBUSI:</div>
                     
-                    <!-- A. Utama -->
-                    <div style="margin-bottom: 15px;">
-                        <h4 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px;">A. Utama</h4>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 11pt;">
-                            <thead>
-                                <tr style="background-color: #f0f0f0;">
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 40px;">No</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Kegiatan</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Realisasi</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Umpan Balik</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 100px;">Nilai</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${renderHasilKerjaRows(skp.details?.utama, skp.realisasi?.utama, feedback.utama)}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- B. Tambahan -->
-                    <div style="margin-bottom: 15px;">
-                        <h4 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px;">B. Tambahan</h4>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 11pt;">
-                            <thead>
-                                <tr style="background-color: #f0f0f0;">
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 40px;">No</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Kegiatan</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Realisasi</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center;">Umpan Balik</th>
-                                    <th style="border: 1px solid #000; padding: 8px; text-align: center; width: 100px;">Nilai</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${renderHasilKerjaRows(skp.details?.tambahan, skp.realisasi?.tambahan, feedback.tambahan)}
-                            </tbody>
-                        </table>
+                    <div style="display: flex; justify-content: center; align-items: flex-end; height: 120px; padding-bottom: 20px;">
+                        <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" style="overflow: visible;">
+                            <!-- X Axis -->
+                            <line x1="0" y1="${graphBottomY}" x2="${svgWidth}" y2="${graphBottomY}" stroke="black" stroke-width="1" />
+                            
+                            <!-- Area Fill -->
+                             <path d="${fillPathD}" fill="#ecfdf5" opacity="0.5" />
+
+                            <!-- Curve -->
+                            <path d="${pathD}" fill="none" stroke="black" stroke-width="2" />
+                            
+                            <!-- Labels -->
+                            <text x="${points[0].x}" y="${graphBottomY + 15}" font-family="Times New Roman" font-size="10" text-anchor="middle">Sangat</text>
+                            <text x="${points[0].x}" y="${graphBottomY + 25}" font-family="Times New Roman" font-size="10" text-anchor="middle">Kurang</text>
+                            
+                            <text x="${points[1].x}" y="${graphBottomY + 15}" font-family="Times New Roman" font-size="10" text-anchor="middle">Kurang/</text>
+                            <text x="${points[1].x}" y="${graphBottomY + 25}" font-family="Times New Roman" font-size="10" text-anchor="middle">Misconduct</text>
+                            
+                            <text x="${points[2].x}" y="${graphBottomY + 15}" font-family="Times New Roman" font-size="10" text-anchor="middle">Butuh</text>
+                            <text x="${points[2].x}" y="${graphBottomY + 25}" font-family="Times New Roman" font-size="10" text-anchor="middle">Perbaikan</text>
+                            
+                            <text x="${points[3].x}" y="${graphBottomY + 15}" font-family="Times New Roman" font-size="10" text-anchor="middle">Baik</text>
+                             
+                            <text x="${points[4].x}" y="${graphBottomY + 15}" font-family="Times New Roman" font-size="10" text-anchor="middle">Sangat Baik</text>
+                            
+                            <text x="250" y="${graphBottomY + 45}" font-family="Times New Roman" font-size="10" text-anchor="middle">Predikat Kinerja Pegawai</text>
+
+                             <!-- Count Markers Removed for cleaner look -->
+
+                        </svg>
                     </div>
                 </div>
 
-                <!-- Perilaku Kerja Section -->
+                <!-- HASIL KERJA TITLE -->
+                <div style="font-weight: bold; font-size: 11pt; margin-bottom: 5px; border: 1px solid #000; padding: 5px; background-color: #f0f0f0; border-bottom: none;">
+                    HASIL KERJA
+                </div>
+
+                <!-- UTAMA -->
+                <div style="border: 1px solid #000; padding: 5px 10px; font-weight: bold; border-bottom: none;">A. Utama</div>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 0; border: 1px solid #000;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #000; padding: 5px; width: 30px;">No</th>
+                            <th style="border: 1px solid #000; padding: 5px;">Rencana Hasil Kerja</th>
+                            <th style="border: 1px solid #000; padding: 5px;">Realisasi Berdasarkan Bukti Dukung</th>
+                            <th style="border: 1px solid #000; padding: 5px;">Umpan Balik Berkelanjutan Berdasarkan Bukti Dukung</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${renderHasilKerjaRows(skp.details?.utama, skp.realisasi?.utama, feedback.utama)}
+                    </tbody>
+                </table>
+
+                <!-- TAMBAHAN -->
+                ${skp.details?.tambahan && skp.details.tambahan.length > 0 ? `
+                    <div style="border: 1px solid #000; border-top: none; padding: 5px 10px; font-weight: bold;">B. Tambahan</div>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #000; border-top: none;">
+                        <thead>
+                            <tr>
+                                <th style="border: 1px solid #000; padding: 5px; width: 30px;">No</th>
+                                <th style="border: 1px solid #000; padding: 5px;">Rencana Hasil Kerja</th>
+                                <th style="border: 1px solid #000; padding: 5px;">Realisasi Berdasarkan Bukti Dukung</th>
+                                <th style="border: 1px solid #000; padding: 5px;">Umpan Balik Berkelanjutan Berdasarkan Bukti Dukung</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${renderHasilKerjaRows(skp.details?.tambahan, skp.realisasi?.tambahan, feedback.tambahan)}
+                        </tbody>
+                    </table>
+                ` : '<div style="margin-bottom: 20px;"></div>'}
+
+                 <!-- PERILAKU KERJA -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px;">PERILAKU KERJA</h3>
                     <table style="width: 100%; border-collapse: collapse; font-size: 11pt;">
@@ -543,53 +686,68 @@ const ReviewRealisasi = () => {
                     </table>
                 </div>
 
-                <!-- Rating Summary -->
-                ${skp.predikatAkhir ? `
-                <div style="margin: 20px 0; padding: 15px; border: 1px solid #000; background-color: #f9f9f9;">
-                    <table style="width: 100%; font-size: 11pt;">
-                        <tr>
-                            <td style="width: 200px; font-weight: bold;">RATING HASIL KERJA</td>
-                            <td>: ${skp.predikatAkhir}</td>
-                        </tr>
-                    </table>
-                </div>
-                ` : ''}
-
-                <!-- Signature Section -->
-                <div style="margin-top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid;">
-                    <!-- Pegawai (Left) -->
-                    <div style="text-align: center; width: 300px;">
-                        <p style="font-size: 11pt; margin-bottom: 60px;">
+                <!-- RATING FINAL -->
+                 <div style="margin-bottom: 20px;"></div>
+                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 10pt; page-break-inside: avoid;">
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 8px; width: 300px; font-weight: bold; background-color: #f0f0f0;">
+                            RATING PERILAKU
+                        </td>
+                        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">
+                             Diatas Ekspektasi
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 8px; width: 300px; font-weight: bold; background-color: #f0f0f0;">
+                            PREDIKAT KINERJA PEGAWAI
+                        </td>
+                        <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">
+                             ${skp.predikatAkhir || 'BAIK'}
+                        </td>
+                    </tr>
+                 </table>
+                
+                <!-- SIGNATURE -->
+                <div class="signature-section">
+                    <div class="signature-box">
+                        <div style="margin-bottom: 70px;">
                             <br/>
-                            Pegawai Yang Dinilai
-                        </p>
-                        <p style="font-size: 11pt; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">${skp.user?.fullName || '...................'}</p>
-                        <p style="font-size: 11pt;">NIP. ${skp.user?.identityNumber || '...................'}</p>
+                            Pegawai yang Dinilai,
+                        </div>
+                        <div style="font-weight: bold; text-decoration: underline;">${skp.user?.fullName || ''}</div>
+                        <div>NIP. ${formatNIP(skp.user?.identityNumber)}</div>
                     </div>
-
-                    <!-- Pejabat Penilai (Right) -->
-                    <div style="text-align: center; width: 300px;">
-                        <p style="font-size: 11pt; margin-bottom: 60px;">
-                            ${new Date(skp.realisasiReviewedAt || new Date()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
-                            Pejabat Penilai Kinerja
-                        </p>
-                        <p style="font-size: 11pt; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">${evaluatorName}</p>
-                        <p style="font-size: 11pt;">NIP. ${evaluatorNIP}</p>
+                    <div class="signature-box">
+                        <div style="margin-bottom: 70px;">
+                            Yogyakarta, ${signatureDate}
+                            <br/>
+                            Pejabat Penilai Kinerja,
+                        </div>
+                        <div style="font-weight: bold; text-decoration: underline;">${evaluatorName}</div>
+                        <div>NIP. ${formatNIP(evaluatorNIP)}</div>
                     </div>
                 </div>
+
             </div>
         `;
 
-
         const opt = {
-            margin: [10, 10, 10, 10],
-            filename: `SKP_${skp.user?.fullName?.replace(/\s+/g, '_')}_${skp.period || skp.year}.pdf`,
+            margin: [10, 15, 10, 15],
+            filename: `Evaluasi_Kinerja_${skp.user?.fullName?.replace(/\s+/g, '_')}_${skp.period || skp.year}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
 
-        html2pdf().set(opt).from(element).save();
+        toast.promise(
+            html2pdf().set(opt).from(element).save(),
+            {
+                loading: 'Sedang membuat PDF...',
+                success: 'PDF berhasil diunduh!',
+                error: 'Gagal membuat PDF'
+            }
+        );
     };
 
 
@@ -919,28 +1077,99 @@ const ReviewRealisasi = () => {
                 </div>
             </div>
 
-            {/* User Info Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
-                        {skp.user?.fullName?.charAt(0) || 'U'}
+            {/* User & Evaluator Info Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Pegawai Card */}
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="bg-purple-50 px-6 py-3 border-b border-purple-100">
+                        <h3 className="font-bold text-purple-700 text-sm flex items-center gap-2">
+                            <User size={16} />
+                            Pegawai yang Dinilai
+                        </h3>
                     </div>
-                    <div className="flex-1">
-                        <h2 className="text-lg font-bold text-gray-900">{skp.user?.fullName}</h2>
-                        <div className="flex flex-wrap gap-4 mt-1 text-sm text-gray-500">
-                            <span className="flex items-center gap-1">
-                                <User size={14} />
-                                NIP. {skp.user?.identityNumber || '-'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <Building2 size={14} />
-                                {skp.user?.departmentName || '-'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <Calendar size={14} />
-                                Dikirim: {skp.realisasiSubmittedAt ? new Date(skp.realisasiSubmittedAt).toLocaleDateString('id-ID') : '-'}
-                            </span>
+                    <div className="p-6 space-y-4">
+                        <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+                            <div className="text-gray-500 font-medium">Nama</div>
+                            <div className="text-gray-900 font-bold">{skp.user?.fullName || '-'}</div>
+
+                            <div className="text-gray-500 font-medium">NIP</div>
+                            <div className="text-gray-900">{skp.user?.identityNumber || '-'}</div>
+
+                            <div className="text-gray-500 font-medium">Pangkat/Gol.</div>
+                            <div className="text-gray-900">{skp.user?.pangkat || '-'}</div>
+
+                            <div className="text-gray-500 font-medium">Jabatan</div>
+                            <div className="text-gray-900">{skp.user?.jabatan || '-'}</div>
+
+                            <div className="text-gray-500 font-medium">Unit Kerja</div>
+                            <div className="text-gray-900">{skp.user?.departmentName || '-'}</div>
                         </div>
+                        <div className="pt-4 mt-4 border-t border-gray-50 text-xs text-gray-400 flex items-center gap-1">
+                            <Calendar size={12} />
+                            Dikirim: {skp.realisasiSubmittedAt ? new Date(skp.realisasiSubmittedAt).toLocaleDateString('id-ID') : '-'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Pejabat Penilai Card */}
+                {(() => {
+                    const penilai = officialEvaluator || skp.pejabatPenilai || skp.evaluator || {};
+                    return (
+                        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="bg-purple-50 px-6 py-3 border-b border-purple-100">
+                                <h3 className="font-bold text-purple-700 text-sm flex items-center gap-2">
+                                    <User size={16} />
+                                    Pejabat Penilai Kinerja
+                                </h3>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+                                    <div className="text-gray-500 font-medium">Nama</div>
+                                    <div className="text-gray-900 font-bold">{penilai.fullName || penilai.nama || '-'}</div>
+
+                                    <div className="text-gray-500 font-medium">NIP</div>
+                                    <div className="text-gray-900">{penilai.identityNumber || penilai.nip || '-'}</div>
+
+                                    <div className="text-gray-500 font-medium">Pangkat/Gol.</div>
+                                    <div className="text-gray-900">{penilai.pangkat || '-'}</div>
+
+                                    <div className="text-gray-500 font-medium">Jabatan</div>
+                                    <div className="text-gray-900">{penilai.jabatan || '-'}</div>
+
+                                    <div className="text-gray-500 font-medium">Unit Kerja</div>
+                                    <div className="text-gray-900">{penilai.departmentName || penilai.unitKerja || '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </div>
+
+            {/* Distribution Curve Visualization (Dynamic) */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
+                    <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-700">CAPAIAN KINERJA ORGANISASI:</span>
+                        <span className={`font-bold px-3 py-1 rounded-full text-sm ${(skp.predikatAkhir || 'BAIK').toUpperCase() === 'SANGAT BAIK' || (skp.predikatAkhir || 'BAIK').toUpperCase() === 'ISTIMEWA' ? 'bg-primary/10 text-primary' :
+                            (skp.predikatAkhir || 'BAIK').toUpperCase() === 'BAIK' ? 'bg-blue-100 text-blue-700' :
+                                (skp.predikatAkhir || 'BAIK').toUpperCase() === 'BUTUH PERBAIKAN' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                            }`}>
+                            {(skp.predikatAkhir || 'BAIK').toUpperCase()}
+                        </span>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <TrendingUp size={18} className="text-gray-500" />
+                        POLA DISTRIBUSI
+                    </h3>
+
+                    <DynamicDistributionChart skp={skp} />
+
+                    <div className="text-center mt-4 text-xs text-gray-400">
+                        *Grafik menampilkan frekuensi rating dari setiap item kegiatan berdasarkan data riil.
                     </div>
                 </div>
             </div>

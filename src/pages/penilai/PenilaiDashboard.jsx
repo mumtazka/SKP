@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useEvaluator } from '@/context/EvaluatorContext';
+import EvaluatorSelector from '@/components/common/EvaluatorSelector';
 import { api } from '@/services/api';
 import StatCard from '@/components/dashboard/StatCard';
 import { FileText, CheckSquare, Clock, Users, CheckCircle, XCircle, Eye, MessageSquare, AlertCircle, Trash2 } from 'lucide-react';
@@ -8,6 +10,7 @@ import { toast } from 'sonner';
 
 const KepegawaianDashboard = () => {
     const { user } = useAuth();
+    const { selectedEvaluatorId } = useEvaluator();
     const navigate = useNavigate();
     const [stats, setStats] = useState({
         pendingApprovals: 0,
@@ -27,29 +30,39 @@ const KepegawaianDashboard = () => {
     const [sectionFeedback, setSectionFeedback] = useState({});
 
     const fetchData = async () => {
+        if (!user) return;
+
+        const targetEvaluatorId = (user.role === 'admin' || user.role === 'superadmin')
+            ? selectedEvaluatorId
+            : user.id;
+
+        if ((user.role === 'admin' || user.role === 'superadmin') && !targetEvaluatorId) {
+            setPendingSkps([]);
+            setAllSkps([]);
+            setStats({
+                pendingApprovals: 0,
+                totalEmployees: 0,
+                evaluationsDone: 0
+            });
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const skps = await api.skps.getAll();
             const allUsers = await api.users.getAll();
 
-            // Filter SKPs to only show those from lecturers assigned to this Kepegawaian user
+            // Filter SKPs to only show those from lecturers assigned to this target evaluator
             const myAssignedLecturers = allUsers.filter(u =>
                 u.role === 'dosen' &&
-                u.raters?.pejabatPenilaiId === user.id
+                u.raters?.pejabatPenilaiId === targetEvaluatorId
             );
             const myAssignedLecturerIds = myAssignedLecturers.map(l => l.id);
-
-            console.log('[Kepegawaian Dashboard] Current user ID:', user.id);
-            console.log('[Kepegawaian Dashboard] My assigned lecturers:', myAssignedLecturers.map(l => l.fullName));
-            console.log('[Kepegawaian Dashboard] My assigned lecturer IDs:', myAssignedLecturerIds);
 
             // Filter to only show SKPs from assigned lecturers
             const mySkps = skps.filter(s => myAssignedLecturerIds.includes(s.userId));
             const pending = mySkps.filter(s => s.status === 'Pending');
-
-            console.log('[Kepegawaian Dashboard] Total SKPs:', skps.length);
-            console.log('[Kepegawaian Dashboard] My SKPs:', mySkps.length);
-            console.log('[Kepegawaian Dashboard] Pending SKPs:', pending.length);
 
             setPendingSkps(pending);
             setAllSkps(mySkps); // Store all SKPs
@@ -68,7 +81,7 @@ const KepegawaianDashboard = () => {
 
     useEffect(() => {
         fetchData();
-    }, [user.id]);
+    }, [user.id, selectedEvaluatorId]);
 
     const handleOpenModal = (skp) => {
         setSelectedSkp(skp);
@@ -218,6 +231,8 @@ const KepegawaianDashboard = () => {
 
     return (
         <div className="space-y-8 relative">
+            <EvaluatorSelector className="mb-6" />
+
             {/* PREVIEW MODAL */}
             {selectedSkp && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">

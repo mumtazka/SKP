@@ -143,7 +143,8 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
                     { name: 'Penilaian', icon: ClipboardList, path: '/penilai/evaluations' },
                     { name: 'Riwayat Pegawai', icon: Users, path: '/penilai/history' },
                 ]
-            }
+            },
+            { name: 'Riwayat', icon: History, path: '/penilai/riwayat' },
         ],
         superadmin: [
             { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
@@ -165,6 +166,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
                 ]
             },
             { name: 'Ajukan SKP', icon: FileText, path: '/dosen/submit' },
+            { name: 'Riwayat SKP', icon: History, path: '/superadmin/riwayat' },
         ],
         admin: [
             { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
@@ -189,7 +191,8 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
                     { name: 'Penilaian', icon: ClipboardList, path: '/penilai/evaluations' },
                     { name: 'Riwayat Pegawai', icon: Users, path: '/penilai/history' },
                 ]
-            }
+            },
+            { name: 'Riwayat SKP', icon: History, path: '/admin/riwayat' },
         ]
     };
 

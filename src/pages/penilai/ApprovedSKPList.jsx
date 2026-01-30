@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { useEvaluator } from '@/context/EvaluatorContext';
+import EvaluatorSelector from '@/components/common/EvaluatorSelector';
 import { DataTable } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
@@ -13,6 +15,7 @@ import Modal from '@/components/common/Modal';
 const ApprovedSKPList = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { selectedEvaluatorId } = useEvaluator();
     const [skps, setSkps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [downloadingId, setDownloadingId] = useState(null);
@@ -32,10 +35,23 @@ const ApprovedSKPList = () => {
             ]);
 
             if (user) {
-                // Logic 1: Users who have explicitly assigned this user as their evaluator in their profile
+                // Tentukan evaluator ID yang digunakan
+                const targetEvaluatorId = (user.role === 'admin' || user.role === 'superadmin')
+                    ? selectedEvaluatorId
+                    : user.id;
+
+                // Jika Admin belum pilih evaluator, kosongkan data
+                if ((user.role === 'admin' || user.role === 'superadmin') && !targetEvaluatorId) {
+                    setSkps([]);
+                    setLoading(false);
+                    return;
+                }
+
+                // Logic 1: Users who have explicitly assigned this user (or selected evaluator) 
+                // as their evaluator in their profile
                 const myAssignedLecturers = allUsers.filter(u =>
                     u.role === 'dosen' &&
-                    u.raters?.pejabatPenilaiId === user.id
+                    u.raters?.pejabatPenilaiId === targetEvaluatorId
                 );
                 const myAssignedLecturerIds = myAssignedLecturers.map(l => l.id);
 
@@ -44,7 +60,7 @@ const ApprovedSKPList = () => {
                 // 2. AND (Belongs to an assigned lecturer OR Explicitly assigned as evaluator on the SKP)
                 const filteredSkps = allSkps.filter(s =>
                     s.status === 'Approved' &&
-                    (myAssignedLecturerIds.includes(s.userId) || s.evaluatorId === user.id)
+                    (myAssignedLecturerIds.includes(s.userId) || s.evaluatorId === targetEvaluatorId)
                 );
 
                 setSkps(filteredSkps);
@@ -61,7 +77,7 @@ const ApprovedSKPList = () => {
         if (user) {
             fetchSkps();
         }
-    }, [user]);
+    }, [user, selectedEvaluatorId]);
 
     const generatePDF = async (skp) => {
         setDownloadingId(skp.id);
@@ -307,6 +323,8 @@ const ApprovedSKPList = () => {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-10">
+            <EvaluatorSelector className="mb-6" />
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Approved SKP List</h1>

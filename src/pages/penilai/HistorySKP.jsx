@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
-import { Table } from '@/components/common/Table'; // Assuming a common table component exists or I'll build a simple one
+import { useAuth } from '@/context/AuthContext';
+import { useEvaluator } from '@/context/EvaluatorContext';
+import EvaluatorSelector from '@/components/common/EvaluatorSelector';
+import { Table } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
 import { FileText, Search, Filter, Download, Eye, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const HistorySKP = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { selectedEvaluatorId } = useEvaluator();
     const [skps, setSkps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -15,21 +20,36 @@ const HistorySKP = () => {
 
     useEffect(() => {
         loadHistory();
-    }, []);
+    }, [user, selectedEvaluatorId]);
 
     const loadHistory = async () => {
+        if (!user) return;
+
+        const targetEvaluatorId = (user.role === 'admin' || user.role === 'superadmin')
+            ? selectedEvaluatorId
+            : user.id;
+
+        if ((user.role === 'admin' || user.role === 'superadmin') && !targetEvaluatorId) {
+            setSkps([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const allSkps = await api.skps.getAll();
+            const allUsers = await api.users.getAll();
+
+            const myAssignedLecturers = allUsers.filter(u =>
+                u.role === 'dosen' &&
+                u.raters?.pejabatPenilaiId === targetEvaluatorId
+            );
+            const myAssignedLecturerIds = myAssignedLecturers.map(l => l.id);
+
             // Filter for Approved SKPs (Final)
-            // Also include those where realisasiStatus is Approved (which means the whole cycle is done) or just skp status Approved if that's what "Final" means contextually. 
-            // The user said "theres a data for all skp that final". 
-            // Usually Final means the Realization is Approved. 
-            // In RealisasiSKP.jsx we set realisasiStatus = 'Approved'.
-            // Let's look for realisasiStatus === 'Approved' OR status === 'Approved' depending on what they track.
-            // If they mean "History of Completed SKPs", it likely means Realisasi is done.
             const finalSkps = allSkps.filter(s =>
-                s.realisasiStatus === 'Approved'
+                s.realisasiStatus === 'Approved' &&
+                myAssignedLecturerIds.includes(s.userId)
             );
             setSkps(finalSkps);
         } catch (error) {
@@ -51,6 +71,8 @@ const HistorySKP = () => {
 
     return (
         <div className="space-y-6">
+            <EvaluatorSelector className="mb-6" />
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Riwayat SKP Final</h1>

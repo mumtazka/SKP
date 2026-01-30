@@ -3,20 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useEvaluator } from '@/context/EvaluatorContext';
+import { usePeriod } from '@/context/PeriodContext';
 import EvaluatorSelector from '@/components/common/EvaluatorSelector';
 import { Table } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
-import { FileText, Search, Filter, Download, Eye, CheckCircle } from 'lucide-react';
+import { FileText, Search, Filter, Download, Eye, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { generateSKPFullPDF } from '@/utils/generateSKPFullPDF';
 
 const HistorySKP = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { selectedEvaluatorId } = useEvaluator();
+    const { periodConfig } = usePeriod();
     const [skps, setSkps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+    const [downloadingId, setDownloadingId] = useState(null);
 
     useEffect(() => {
         loadHistory();
@@ -161,15 +165,57 @@ const HistorySKP = () => {
                                             {skp.realisasiSubmittedAt ? new Date(skp.realisasiSubmittedAt).toLocaleDateString('id-ID') : '-'}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-primary hover:text-primary hover:bg-primary/5"
-                                                onClick={() => navigate(`/penilai/review-realisasi/${skp.id}`, { state: { returnTo: '/penilai/history' } })}
-                                            >
-                                                <Eye size={16} className="mr-2" />
-                                                Lihat & Download
-                                            </Button>
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-primary hover:text-primary hover:bg-primary/5"
+                                                    onClick={() => navigate(`/penilai/review-realisasi/${skp.id}`, { state: { returnTo: '/penilai/history' } })}
+                                                >
+                                                    <Eye size={16} className="mr-2" />
+                                                    Lihat
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={downloadingId === skp.id}
+                                                    onClick={async () => {
+                                                        setDownloadingId(skp.id);
+                                                        try {
+                                                            // Fetch official evaluator
+                                                            let evaluator = null;
+                                                            if (skp.userId) {
+                                                                const userDetail = await api.users.getById(skp.userId);
+                                                                const raterId = userDetail.raters?.pejabatPenilaiId;
+                                                                if (raterId) {
+                                                                    evaluator = await api.users.getById(raterId);
+                                                                }
+                                                            }
+
+                                                            await generateSKPFullPDF(skp, {
+                                                                evaluator,
+                                                                periodConfig,
+                                                                feedback: {},
+                                                                perilakuRows: skp.realisasi?.perilaku || []
+                                                            });
+                                                            toast.success('PDF berhasil diunduh!');
+                                                        } catch (error) {
+                                                            console.error('PDF generation failed:', error);
+                                                            toast.error('Gagal membuat PDF');
+                                                        } finally {
+                                                            setDownloadingId(null);
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-1.5"
+                                                >
+                                                    {downloadingId === skp.id ? (
+                                                        <Loader2 size={14} className="animate-spin" />
+                                                    ) : (
+                                                        <Download size={14} />
+                                                    )}
+                                                    PDF
+                                                </Button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

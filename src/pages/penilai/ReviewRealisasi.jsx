@@ -31,6 +31,8 @@ import html2pdf from 'html2pdf.js';
 import SKPSection from '../dosen/components/SKPSection';
 import Toolbar from '@/pages/dosen/components/Toolbar';
 import DynamicDistributionChart from './components/DynamicDistributionChart';
+import { generateSKPFullPDF } from '@/utils/generateSKPFullPDF';
+import { usePeriod } from '@/context/PeriodContext';
 
 const RATING_OPTIONS = [
     {
@@ -85,6 +87,7 @@ const ReviewRealisasi = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
+    const { periodConfig } = usePeriod();
 
     const [skp, setSkp] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -1066,13 +1069,37 @@ const ReviewRealisasi = () => {
                     <p className="text-gray-500 mt-1">Periode: {skp.period}</p>
                 </div>
                 <div className="flex gap-2 no-print">
+                    <div className="relative group">
+                        <Button
+                            variant="outline"
+                            onClick={handleDownloadPDF}
+                            className="flex items-center gap-2"
+                        >
+                            <Download size={16} />
+                            Download Evaluasi
+                        </Button>
+                    </div>
                     <Button
-                        variant="outline"
-                        onClick={handleDownloadPDF}
+                        variant="primary"
+                        onClick={() => {
+                            toast.promise(
+                                generateSKPFullPDF(skp, {
+                                    evaluator: officialEvaluator,
+                                    periodConfig,
+                                    feedback,
+                                    perilakuRows
+                                }),
+                                {
+                                    loading: 'Membuat PDF lengkap...',
+                                    success: 'PDF lengkap berhasil diunduh!',
+                                    error: 'Gagal membuat PDF'
+                                }
+                            );
+                        }}
                         className="flex items-center gap-2"
                     >
-                        <Download size={16} />
-                        Download PDF
+                        <FileText size={16} />
+                        Download Full PDF
                     </Button>
                 </div>
             </div>

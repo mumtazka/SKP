@@ -151,11 +151,9 @@ export const generateSKPFullPDF = async (skp, options = {}) => {
         </table>
     `;
 
-    // Render Hasil Kerja untuk bagian Sasaran (tanpa realisasi)
+    // Render Hasil Kerja untuk bagian Sasaran (tanpa realisasi) - as proper table
     const renderHasilKerjaSasaran = (rows, sectionLabel) => {
         if (!rows || rows.length === 0) return '';
-
-        let html = `<div style="font-weight: bold; margin: 10px 0 5px 0;">${sectionLabel}</div>`;
 
         // Group rows by main row
         const groups = [];
@@ -173,25 +171,72 @@ export const generateSKPFullPDF = async (skp, options = {}) => {
                 };
                 groups.push(currentGroup);
             } else if (currentGroup) {
-                currentGroup.subRows.push(stripHtml(row.columns?.[0] || ''));
+                // Sub-rows contain indicator and target info
+                currentGroup.subRows.push({
+                    col0: stripHtml(row.columns?.[0] || ''),
+                    col1: stripHtml(row.columns?.[1] || ''),
+                    col2: stripHtml(row.columns?.[2] || '')
+                });
             }
         });
+
+        let html = `
+            <div style="font-weight: bold; margin: 10px 0 5px 0;">${sectionLabel}</div>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                <thead>
+                    <tr style="background-color: #f5f5f5;">
+                        <th style="border: 1px solid #000; padding: 8px; width: 40px; text-align: center;">No</th>
+                        <th style="border: 1px solid #000; padding: 8px;">Rencana Hasil Kerja</th>
+                        <th style="border: 1px solid #000; padding: 8px;">Indikator Kinerja Individu</th>
+                        <th style="border: 1px solid #000; padding: 8px; width: 100px;">Target</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
 
         groups.forEach(group => {
-            html += `<div style="margin-bottom: 10px; padding-left: 10px;">
-                <div style="font-weight: bold;">${group.number}. ${group.mainText}</div>`;
+            // Calculate how many rows this group spans
+            const rowSpan = Math.max(1, group.subRows.length);
 
-            if (group.subRows.length > 0) {
-                html += `<div style="margin-top: 5px; padding-left: 15px;">
-                    <span style="font-style: italic;">Ukuran keberhasilan / Indikator Kinerja Individu, dan Target:</span>
-                    <ul style="margin: 5px 0; padding-left: 20px;">`;
-                group.subRows.forEach(sub => {
-                    html += `<li>${sub}</li>`;
-                });
-                html += `</ul></div>`;
+            if (group.subRows.length === 0) {
+                // No sub-rows, just the main row
+                html += `
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 6px; text-align: center; vertical-align: top;">${group.number}</td>
+                        <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${group.mainText}</td>
+                        <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">-</td>
+                        <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">-</td>
+                    </tr>
+                `;
+            } else {
+                // First sub-row with the main row number and text
+                const firstSub = group.subRows[0];
+                html += `
+                    <tr>
+                        <td rowspan="${rowSpan}" style="border: 1px solid #000; padding: 6px; text-align: center; vertical-align: top;">${group.number}</td>
+                        <td rowspan="${rowSpan}" style="border: 1px solid #000; padding: 6px; vertical-align: top;">${group.mainText}</td>
+                        <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${firstSub.col0 || '-'}</td>
+                        <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${firstSub.col1 || firstSub.col2 || '-'}</td>
+                    </tr>
+                `;
+
+                // Additional sub-rows
+                for (let i = 1; i < group.subRows.length; i++) {
+                    const sub = group.subRows[i];
+                    html += `
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${sub.col0 || '-'}</td>
+                            <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">${sub.col1 || sub.col2 || '-'}</td>
+                        </tr>
+                    `;
+                }
             }
-            html += `</div>`;
         });
+
+        html += `
+                </tbody>
+            </table>
+        `;
 
         return html;
     };
@@ -258,7 +303,7 @@ export const generateSKPFullPDF = async (skp, options = {}) => {
                     <br/>
                     Pegawai yang Dinilai,
                 </div>
-                <div style="font-weight: bold; text-decoration: underline;">${skp.user?.fullName || ''}</div>
+                <div style="font-weight: bold;">${skp.user?.fullName || ''}</div>
                 <div>NIP. ${formatNIP(skp.user?.identityNumber)}</div>
             </div>
             <div style="width: 45%; text-align: center;">
@@ -267,7 +312,7 @@ export const generateSKPFullPDF = async (skp, options = {}) => {
                     <br/>
                     Pejabat Penilai Kinerja,
                 </div>
-                <div style="font-weight: bold; text-decoration: underline;">${evaluatorName}</div>
+                <div style="font-weight: bold;">${evaluatorName}</div>
                 <div>NIP. ${formatNIP(evaluatorNIP)}</div>
             </div>
         </div>
@@ -282,7 +327,7 @@ export const generateSKPFullPDF = async (skp, options = {}) => {
                     <br/>
                     Pejabat Penilai Kinerja,
                 </div>
-                <div style="font-weight: bold; text-decoration: underline;">${evaluatorName}</div>
+                <div style="font-weight: bold;">${evaluatorName}</div>
                 <div>NIP. ${formatNIP(evaluatorNIP)}</div>
             </div>
         </div>
@@ -446,11 +491,14 @@ export const generateSKPFullPDF = async (skp, options = {}) => {
         <style>
             @page { size: A4; margin: 15mm 15mm 15mm 15mm; }
             body { font-family: 'Times New Roman', Times, serif; color: #000; line-height: 1.4; font-size: 11pt; }
-            table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
+            table { width: 100%; border-collapse: collapse; }
+            thead { display: table-header-group; }
+            tbody { display: table-row-group; }
+            tr { page-break-inside: avoid; }
             td, th { border: 1px solid #000; padding: 6px; vertical-align: top; word-wrap: break-word; }
             .page-break { page-break-before: always; }
             .section-title { font-weight: bold; margin: 15px 0 10px 0; }
+            .avoid-break { page-break-inside: avoid; }
         </style>
 
         <div style="font-family: 'Times New Roman', Times, serif; color: #000; line-height: 1.4; font-size: 11pt;">
@@ -627,7 +675,7 @@ export const generateSKPFullPDF = async (skp, options = {}) => {
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, letterRendering: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: 'css', before: '.page-break', avoid: '.avoid-break' }
     };
 
     return html2pdf().set(opt).from(element).save();

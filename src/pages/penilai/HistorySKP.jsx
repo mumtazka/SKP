@@ -193,15 +193,11 @@ const HistorySKP = () => {
                                                             }
 
                                                             await generateSKPFullPDF(skp, {
-                                                                evaluator,
-                                                                periodConfig,
-                                                                feedback: {},
+                                                                evaluator: evaluator,
                                                                 perilakuRows: skp.realisasi?.perilaku || []
                                                             });
-                                                            toast.success('PDF berhasil diunduh!');
                                                         } catch (error) {
                                                             console.error('PDF generation failed:', error);
-                                                            toast.error('Gagal membuat PDF');
                                                         } finally {
                                                             setDownloadingId(null);
                                                         }

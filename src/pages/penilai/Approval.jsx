@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
+import { useEvaluator } from '@/context/EvaluatorContext';
+import EvaluatorSelector from '@/components/common/EvaluatorSelector';
 import { DataTable } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
@@ -9,16 +12,47 @@ import { useNavigate } from 'react-router-dom';
 
 const Approval = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { selectedEvaluatorId } = useEvaluator();
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const fetchSubmissions = async () => {
+        if (!user) return;
+
+        // Tentukan evaluator ID yang digunakan
+        const targetEvaluatorId = (user.role === 'admin' || user.role === 'superadmin')
+            ? selectedEvaluatorId
+            : user.id;
+
+        // Jika Admin belum pilih evaluator, kosongkan data
+        if ((user.role === 'admin' || user.role === 'superadmin') && !targetEvaluatorId) {
+            setSubmissions([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const allSkps = await api.skps.getAll();
-            // Filter only pending
-            setSubmissions(allSkps.filter(s => s.status === 'Pending'));
+            const allUsers = await api.users.getAll();
+
+            // Filter users yang dinilai oleh targetEvaluatorId
+            const myAssignedLecturers = allUsers.filter(u =>
+                u.role === 'dosen' &&
+                u.raters?.pejabatPenilaiId === targetEvaluatorId
+            );
+            const myAssignedLecturerIds = myAssignedLecturers.map(l => l.id);
+
+            // Filter SKP milik dosen yang dinilai & status Pending
+            const myPendingSkps = allSkps.filter(s =>
+                myAssignedLecturerIds.includes(s.userId) &&
+                s.status === 'Pending'
+            );
+
+            setSubmissions(myPendingSkps);
         } catch (err) {
+            console.error(err);
             toast.error("Failed to fetch queue");
         } finally {
             setLoading(false);
@@ -27,7 +61,7 @@ const Approval = () => {
 
     useEffect(() => {
         fetchSubmissions();
-    }, []);
+    }, [user, selectedEvaluatorId]);
 
     const handleAction = async (id, action) => {
         try {
@@ -88,6 +122,7 @@ const Approval = () => {
 
     return (
         <div className="space-y-6">
+            <EvaluatorSelector className="mb-6" />
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Pending Approvals</h1>
                 <p className="text-gray-500">Review and approve SKP submissions</p>

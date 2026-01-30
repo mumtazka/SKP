@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { PeriodProvider } from '@/context/PeriodContext';
+import { EvaluatorProvider } from '@/context/EvaluatorContext';
 import { Toaster } from 'sonner';
 
 // Authentication
@@ -19,6 +20,9 @@ import Settings from '@/pages/Settings';
 import DosenDashboard from '@/pages/dosen/DosenDashboard';
 import SubmitSKP from '@/pages/dosen/SubmitSKP';
 import RealisasiSKP from '@/pages/dosen/RealisasiSKP';
+
+// Riwayat Pages
+import RiwayatSKP from '@/pages/riwayat/RiwayatSKP';
 
 // Penilai Pages
 import PenilaiDashboard from '@/pages/penilai/PenilaiDashboard';
@@ -63,60 +67,65 @@ function App() {
         <BrowserRouter>
             <AuthProvider>
                 <PeriodProvider>
-                    <Routes>
-                        <Route path="/login" element={<Login />} />
+                    <EvaluatorProvider>
+                        <Routes>
+                            <Route path="/login" element={<Login />} />
 
-                        <Route path="/" element={<Layout />}>
-                            <Route index element={<DashboardRedirect />} />
-                            <Route path="dashboard" element={<DashboardRedirect />} />
+                            <Route path="/" element={<Layout />}>
+                                <Route index element={<DashboardRedirect />} />
+                                <Route path="dashboard" element={<DashboardRedirect />} />
 
-                            {/* Common Routes */}
-                            <Route path="profile" element={<Profile />} />
-                            <Route path="settings" element={<Settings />} />
+                                {/* Common Routes */}
+                                <Route path="profile" element={<Profile />} />
+                                <Route path="settings" element={<Settings />} />
 
-                            {/* DOSEN */}
-                            <Route path="dosen">
-                                <Route path="dashboard" element={<DosenDashboard />} />
-                                <Route path="submit" element={<SubmitSKP />} />
-                                <Route path="skp/submit" element={<SubmitSKP />} />
-                                <Route path="realisasi" element={<RealisasiSKP />} />
-                                <Route path="history" element={<ComingSoon title="Riwayat SKP" />} />
+                                {/* DOSEN */}
+                                <Route path="dosen">
+                                    <Route path="dashboard" element={<DosenDashboard />} />
+                                    <Route path="submit" element={<SubmitSKP />} />
+                                    <Route path="skp/submit" element={<SubmitSKP />} />
+                                    <Route path="realisasi" element={<RealisasiSKP />} />
+                                    <Route path="history" element={<RiwayatSKP />} />
+                                </Route>
+
+                                {/* PENILAI */}
+                                <Route path="penilai">
+                                    <Route path="dashboard" element={<PenilaiDashboard />} />
+                                    <Route path="approvals" element={<Approval />} />
+                                    <Route path="approval/:id" element={<ReviewSKP />} />
+                                    <Route path="skp-list" element={<ApprovedSKPList />} />
+                                    <Route path="evaluations" element={<Evaluations />} />
+                                    <Route path="review-realisasi/:id" element={<ReviewRealisasi />} />
+                                    <Route path="history" element={<HistorySKP />} />
+                                    <Route path="riwayat" element={<RiwayatSKP />} />
+                                </Route>
+
+                                {/* SUPER ADMIN (Formerly Admin) */}
+                                <Route path="superadmin">
+                                    <Route path="dashboard" element={<SuperAdminDashboard />} />
+                                    <Route path="users" element={<UserManagement />} />
+                                    <Route path="departments" element={<ComingSoon title="Department Management" />} />
+                                    <Route path="settings" element={<ComingSoon title="System Settings" />} />
+                                    <Route path="reports" element={<ComingSoon title="Reports & Analytics" />} />
+                                    <Route path="riwayat" element={<RiwayatSKP />} />
+                                </Route>
+
+                                {/* NEW ADMIN (Rater Assigner) */}
+                                <Route path="admin">
+                                    <Route path="dashboard" element={<AdminDashboard />} />
+                                    <Route path="users" element={<UserManagement />} />
+                                    <Route path="master-data" element={<MasterData />} />
+                                    <Route path="assign" element={<AssignRater />} />
+                                    <Route path="period-settings" element={<PeriodSettings />} />
+                                    <Route path="create-skp" element={<SelectUserForSKP />} />
+                                    <Route path="riwayat" element={<RiwayatSKP />} />
+                                </Route>
                             </Route>
 
-                            {/* PENILAI */}
-                            <Route path="penilai">
-                                <Route path="dashboard" element={<PenilaiDashboard />} />
-                                <Route path="approvals" element={<Approval />} />
-                                <Route path="approval/:id" element={<ReviewSKP />} />
-                                <Route path="skp-list" element={<ApprovedSKPList />} />
-                                <Route path="evaluations" element={<Evaluations />} />
-                                <Route path="review-realisasi/:id" element={<ReviewRealisasi />} />
-                                <Route path="history" element={<HistorySKP />} />
-                            </Route>
-
-                            {/* SUPER ADMIN (Formerly Admin) */}
-                            <Route path="superadmin">
-                                <Route path="dashboard" element={<SuperAdminDashboard />} />
-                                <Route path="users" element={<UserManagement />} />
-                                <Route path="departments" element={<ComingSoon title="Department Management" />} />
-                                <Route path="settings" element={<ComingSoon title="System Settings" />} />
-                                <Route path="reports" element={<ComingSoon title="Reports & Analytics" />} />
-                            </Route>
-
-                            {/* NEW ADMIN (Rater Assigner) */}
-                            <Route path="admin">
-                                <Route path="dashboard" element={<AdminDashboard />} />
-                                <Route path="users" element={<UserManagement />} />
-                                <Route path="master-data" element={<MasterData />} />
-                                <Route path="assign" element={<AssignRater />} />
-                                <Route path="period-settings" element={<PeriodSettings />} />
-                                <Route path="create-skp" element={<SelectUserForSKP />} />
-                            </Route>
-                        </Route>
-
-                        <Route path="*" element={<Navigate to="/login" replace />} />
-                    </Routes>
-                    <Toaster position="top-right" richColors />
+                            <Route path="*" element={<Navigate to="/login" replace />} />
+                        </Routes>
+                        <Toaster position="top-right" richColors />
+                    </EvaluatorProvider>
                 </PeriodProvider>
             </AuthProvider>
         </BrowserRouter>

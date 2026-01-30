@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useEvaluator } from '@/context/EvaluatorContext';
+import EvaluatorSelector from '@/components/common/EvaluatorSelector';
 import { api } from '@/services/api';
 import { DataTable } from '@/components/common/Table';
 import { Button } from '@/components/common/Button';
@@ -19,6 +21,7 @@ import {
 const Evaluations = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { selectedEvaluatorId } = useEvaluator();
     const [pendingRealisasi, setPendingRealisasi] = useState([]);
     const [reviewedRealisasi, setReviewedRealisasi] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -26,19 +29,33 @@ const Evaluations = () => {
 
     useEffect(() => {
         loadData();
-    }, [user]);
+    }, [user, selectedEvaluatorId]);
 
     const loadData = async () => {
         if (!user) return;
+
+        // Tentukan evaluator ID yang digunakan
+        const targetEvaluatorId = (user.role === 'admin' || user.role === 'superadmin')
+            ? selectedEvaluatorId
+            : user.id;
+
+        // Jika Admin belum pilih evaluator, kosongkan data
+        if ((user.role === 'admin' || user.role === 'superadmin') && !targetEvaluatorId) {
+            setPendingRealisasi([]);
+            setReviewedRealisasi([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const allSkps = await api.skps.getAll();
             const allUsers = await api.users.getAll();
 
-            // Filter SKPs to only show those from lecturers assigned to this user
+            // Filter SKPs to only show those from lecturers assigned to this target evaluator
             const myAssignedLecturers = allUsers.filter(u =>
                 u.role === 'dosen' &&
-                u.raters?.pejabatPenilaiId === user.id
+                u.raters?.pejabatPenilaiId === targetEvaluatorId
             );
             const myAssignedLecturerIds = myAssignedLecturers.map(l => l.id);
 
@@ -122,6 +139,9 @@ const Evaluations = () => {
 
     return (
         <div className="space-y-6">
+            {/* Selector for Admin */}
+            <EvaluatorSelector className="mb-6" />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>

@@ -681,4 +681,5 @@ export const generateSKPFullPDF = async (skp, options = {}) => {
     return html2pdf().set(opt).from(element).save();
 };
 
+
 export default generateSKPFullPDF;

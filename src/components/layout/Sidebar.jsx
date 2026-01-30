@@ -16,11 +16,7 @@ import {
     Calendar,
     ChevronDown,
     UserCircle,
-    ChevronDown,
-    UserCircle,
-    ChevronDown,
-    UserCircle,
-    Briefcase,
+    Briefcase
 } from 'lucide-react';
 import { Logo } from '@/components/common/Logo';
 
